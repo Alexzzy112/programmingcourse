@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import PasswordInput from '../components/PasswordInput';
-import alexImg from '../../alex.png';
 
 export default function StudentRegister() {
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '', phone: '', department: '' });
@@ -39,7 +38,7 @@ export default function StudentRegister() {
         </div>
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-6">
-            <a href={alexImg} target="_blank" rel="noopener noreferrer" className="block w-64 h-64 rounded-full mx-auto overflow-hidden border-4 border-primary-100"><img src={alexImg} alt="Alexzzy" className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition scale-150" /></a>
+            <img src="/alex.png" alt="Alexzzy" className="w-36 h-36 rounded-full mx-auto object-cover border-4 border-primary-100" />
             <h2 className="text-xl font-bold text-gray-900 mt-3">Welcome to Alexzzy Courses</h2>
           </div>
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{error}</div>}
