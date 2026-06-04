@@ -84,6 +84,34 @@ app.post('/api/hard-login', async (req, res) => {
   }
 });
 
+app.post('/api/seed-admin', async (req, res) => {
+  try {
+    const db = mongoose.connection.db;
+    const lecturers = db.collection('lecturers');
+    const existing = await lecturers.findOne({ email: 'alexzzy@course.com' });
+    if (existing) return res.json({ message: 'admin already exists' });
+
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash('Alexzzy11', salt);
+
+    await lecturers.insertOne({
+      firstName: 'Alexzzy',
+      lastName: 'Admin',
+      email: 'alexzzy@course.com',
+      password: hashedPassword,
+      staffId: 'ADMIN001',
+      department: 'Computer Science',
+      phone: '',
+      profilePicture: '',
+      createdAt: new Date()
+    });
+    res.json({ message: 'admin created' });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
+});
+
 app.use((err, req, res, next) => {
   res.status(503).json({ message: 'Database unavailable', error: err.message });
 });
