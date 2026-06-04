@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const mongoose = require('mongoose');
 
 const app = express();
@@ -11,24 +10,32 @@ app.use(express.urlencoded({ extended: true }));
 
 const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://my_course:Alexzzy_11@cluster0.dcfjjzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
-let cached = global.mongoose;
-if (!cached) cached = global.mongoose = { conn: null, promise: null };
+let connPromise = null;
 
 async function connectDB() {
-  if (cached.conn) return cached.conn;
-  if (!cached.promise) {
+  if (mongoose.connection.readyState === 1) return;
+  if (!connPromise) {
     mongoose.set('bufferCommands', false);
-    cached.promise = mongoose.connect(mongoURI, {
+    connPromise = mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000
-    }).then(m => m).catch(err => {
-      cached.promise = null;
+    }).catch(err => {
+      connPromise = null;
       throw err;
     });
   }
-  cached.conn = await cached.promise;
-  return cached.conn;
+  await connPromise;
 }
+
+app.use(async (req, res, next) => {
+  if (req.path === '/api/health') return next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(503).json({ message: 'Database unavailable', error: err.message });
+  }
+});
 
 app.use('/api/auth', require('../server/routes/auth'));
 app.use('/api/courses', require('../server/routes/courses'));
@@ -40,11 +47,4 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Course Management API is running' });
 });
 
-module.exports = async (req, res) => {
-  try {
-    await connectDB();
-    return app(req, res);
-  } catch (err) {
-    res.status(500).json({ message: 'Database connection failed', error: err.message });
-  }
-};
+module.exports = app;
