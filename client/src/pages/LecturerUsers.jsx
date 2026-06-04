@@ -11,6 +11,7 @@ export default function LecturerUsers() {
   const [editStudent, setEditStudent] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [editLoading, setEditLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
     api.get('/courses/students/all')
@@ -165,7 +166,7 @@ export default function LecturerUsers() {
                         ) : (
                           <button onClick={() => handleAction(s._id, null, 'suspend')} className="bg-orange-600 text-white text-xs px-3 py-1.5 rounded hover:bg-orange-700 transition">Suspend Acct</button>
                         )}
-                        <button onClick={() => handleAction(s._id, c?._id || null, 'delete')} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded hover:bg-red-700 transition">Delete</button>
+                        <button onClick={() => setDeleteConfirm({ studentId: s._id, courseId: c?._id || null })} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded hover:bg-red-700 transition">Delete</button>
                       </td>
                     </tr>
                   );
@@ -198,6 +199,20 @@ export default function LecturerUsers() {
               <div className="flex justify-between"><span className="text-gray-500">Account Status</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${viewStudent.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{viewStudent.status}</span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-white rounded-xl w-full max-w-sm p-6 relative" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-2">Confirm Delete</h2>
+            <p className="text-sm text-gray-600 mb-6">Are you sure you want to delete this student? This action cannot be undone and will remove all related data.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-50 transition">Cancel</button>
+              <button onClick={() => { handleAction(deleteConfirm.studentId, deleteConfirm.courseId, 'delete'); setDeleteConfirm(null); }} className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 transition">Confirm Delete</button>
             </div>
           </div>
         </div>
