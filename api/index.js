@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const serverless = require('serverless-http');
 
 const app = express();
 
@@ -17,8 +18,8 @@ async function connectDB() {
   if (!connPromise) {
     mongoose.set('bufferCommands', false);
     connPromise = mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000
     }).catch(err => {
       connPromise = null;
       throw err;
@@ -28,12 +29,12 @@ async function connectDB() {
 }
 
 app.use(async (req, res, next) => {
-  if (req.path === '/api/health' || !req.path.startsWith('/api/')) return next();
+  if (req.path === '/api/health') return next();
   try {
     await connectDB();
     next();
   } catch (err) {
-    res.status(503).json({ message: 'Database unavailable', error: err.message, mongoURI: mongoURI.substring(0, 30) + '...' });
+    res.status(503).json({ message: 'Database unavailable', error: err.message });
   }
 });
 
@@ -44,11 +45,7 @@ app.use('/api/submissions', require('../server/routes/submissions'));
 app.use('/api/grades', require('../server/routes/grades'));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Course Management API is running', dbState: mongoose.connection.readyState, mongoURI: (process.env.MONGODB_URI || 'using_fallback').substring(0, 40) + '...' });
+  res.json({ status: 'OK', message: 'Course Management API is running', dbState: mongoose.connection.readyState });
 });
 
-app.post('/api/test-body', (req, res) => {
-  res.json({ body: req.body, received: true });
-});
-
-module.exports = app;
+module.exports.handler = serverless(app);
