@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Layout from '../components/Layout';
 import api from '../utils/api';
 
@@ -18,6 +18,27 @@ export default function LecturerUsers() {
       .then(({ data }) => { setAllStudents(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  const groupedStudents = useMemo(() => {
+    const map = {};
+    for (const item of allStudents) {
+      const sid = item.student?._id;
+      if (!sid) continue;
+      if (!map[sid]) {
+        map[sid] = {
+          student: item.student,
+          studentStatus: item.studentStatus,
+          registrations: [],
+          hasRegistration: false
+        };
+      }
+      if (item.course) {
+        map[sid].registrations.push(item);
+        map[sid].hasRegistration = true;
+      }
+    }
+    return Object.values(map);
+  }, [allStudents]);
 
   const handleAction = async (studentId, courseId, action) => {
     setMessage({ type: '', text: '' });
@@ -105,7 +126,7 @@ export default function LecturerUsers() {
       )}
 
       <div className="card">
-        {allStudents.length === 0 ? (
+        {groupedStudents.length === 0 ? (
           <p className="text-gray-500 text-sm py-8 text-center">No registered users</p>
         ) : (
           <div className="overflow-x-auto">
@@ -115,19 +136,17 @@ export default function LecturerUsers() {
                   <th className="pb-3 pr-3 font-medium">Student</th>
                   <th className="pb-3 pr-3 font-medium">Email</th>
                   <th className="pb-3 pr-3 font-medium">Student ID</th>
-                  <th className="pb-3 pr-3 font-medium">Course</th>
-                  <th className="pb-3 pr-3 font-medium">Course Status</th>
+                  <th className="pb-3 pr-3 font-medium">Courses</th>
                   <th className="pb-3 pr-3 font-medium">Account</th>
                   <th className="pb-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {allStudents.map((item, idx) => {
-                  const s = item.student;
-                  const c = item.course;
-                  const accountSus = item.studentStatus === 'suspended';
+                {groupedStudents.map((group) => {
+                  const s = group.student;
+                  const accountSus = group.studentStatus === 'suspended';
                   return (
-                    <tr key={item.registrationId || `unreg-${s?._id}-${idx}`} className="border-b last:border-0 hover:bg-gray-50">
+                    <tr key={s._id} className="border-b last:border-0 hover:bg-gray-50">
                       <td className="py-3 pr-3">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-700 text-xs font-bold">
@@ -138,13 +157,31 @@ export default function LecturerUsers() {
                       </td>
                       <td className="py-3 pr-3 text-xs text-gray-500">{s?.email}</td>
                       <td className="py-3 pr-3 text-xs text-gray-500">{s?.studentId}</td>
-                      <td className="py-3 pr-3 text-xs">{c?.code || '—'}</td>
                       <td className="py-3 pr-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          item.status === 'active' ? 'bg-green-100 text-green-700' :
-                          item.status === 'suspended' ? 'bg-red-100 text-red-700' :
-                          'bg-gray-100 text-gray-500'
-                        }`}>{item.status}</span>
+                        {group.registrations.length === 0 ? (
+                          <span className="text-xs text-gray-400">—</span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {group.registrations.map((item) => {
+                              const c = item.course;
+                              return (
+                                <div key={item.registrationId} className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-medium">{c?.code || '—'}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    item.status === 'active' ? 'bg-green-100 text-green-700' :
+                                    item.status === 'suspended' ? 'bg-red-100 text-red-700' :
+                                    'bg-gray-100 text-gray-500'
+                                  }`}>{item.status}</span>
+                                  {item.status === 'suspended' ? (
+                                    <button onClick={() => handleAction(s._id, c._id, 'approve')} className="bg-green-600 text-white text-xs px-2 py-0.5 rounded hover:bg-green-700 transition">Approve</button>
+                                  ) : (
+                                    <button onClick={() => handleAction(s._id, c._id, 'suspend')} className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded hover:bg-orange-600 transition">Suspend</button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 pr-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${accountSus ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
@@ -154,19 +191,12 @@ export default function LecturerUsers() {
                       <td className="py-3 flex gap-1 flex-wrap">
                         <button onClick={() => openView(s)} className="bg-blue-500 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600 transition">View</button>
                         <button onClick={() => openEdit(s)} className="bg-indigo-500 text-white text-xs px-3 py-1.5 rounded hover:bg-indigo-600 transition">Edit</button>
-                        {c && (
-                          item.status === 'suspended' ? (
-                            <button onClick={() => handleAction(s._id, c._id, 'approve')} className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700 transition">Approve</button>
-                          ) : (
-                            <button onClick={() => handleAction(s._id, c._id, 'suspend')} className="bg-orange-500 text-white text-xs px-3 py-1.5 rounded hover:bg-orange-600 transition">Suspend</button>
-                          )
-                        )}
                         {accountSus ? (
                           <button onClick={() => handleAction(s._id, null, 'approve')} className="bg-green-700 text-white text-xs px-3 py-1.5 rounded hover:bg-green-800 transition">Un-suspend Acct</button>
                         ) : (
                           <button onClick={() => handleAction(s._id, null, 'suspend')} className="bg-orange-600 text-white text-xs px-3 py-1.5 rounded hover:bg-orange-700 transition">Suspend Acct</button>
                         )}
-                        <button onClick={() => setDeleteConfirm({ studentId: s._id, courseId: c?._id || null })} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded hover:bg-red-700 transition">Delete</button>
+                        <button onClick={() => setDeleteConfirm({ studentId: s._id })} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded hover:bg-red-700 transition">Delete</button>
                       </td>
                     </tr>
                   );
