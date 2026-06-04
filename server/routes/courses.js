@@ -167,6 +167,7 @@ router.get('/students/all', protect, authorize('lecturer'), async (req, res) => 
           student: s,
           course: null,
           status: 'not registered',
+          studentStatus: s.status,
           registeredAt: null
         });
       } else {
@@ -176,6 +177,7 @@ router.get('/students/all', protect, authorize('lecturer'), async (req, res) => 
             student: r.student,
             course: r.course,
             status: r.status,
+            studentStatus: s.status,
             registeredAt: r.registeredAt
           });
           seen.add(sid);
@@ -231,6 +233,69 @@ router.delete('/:courseId/students/:studentId', protect, authorize('lecturer'), 
       await course.save();
     }
     res.json({ message: 'Student removed from course successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/students/:studentId/suspend', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.studentId);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    student.status = 'suspended';
+    await student.save();
+    await CourseRegistration.updateMany({ student: req.params.studentId, status: 'active' }, { status: 'suspended' });
+    res.json({ message: 'Student account suspended' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/students/:studentId/approve', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.studentId);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    student.status = 'active';
+    await student.save();
+    res.json({ message: 'Student account approved' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/students/:studentId', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.studentId);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    const { firstName, lastName, email, phone, department, studentId } = req.body;
+    if (firstName !== undefined) student.firstName = firstName;
+    if (lastName !== undefined) student.lastName = lastName;
+    if (email !== undefined) student.email = email;
+    if (phone !== undefined) student.phone = phone;
+    if (department !== undefined) student.department = department;
+    if (studentId !== undefined) student.studentId = studentId;
+    await student.save();
+    const { password, ...safe } = student.toObject();
+    res.json({ message: 'Student updated successfully', student: safe });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/students/:studentId', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.studentId);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    const Assignment = require('../models/Assignment');
+    const Submission = require('../models/Submission');
+    const Grade = require('../models/Grade');
+    await Promise.all([
+      CourseRegistration.deleteMany({ student: req.params.studentId }),
+      Submission.deleteMany({ student: req.params.studentId }),
+      Grade.deleteMany({ student: req.params.studentId })
+    ]);
+    await Student.findByIdAndDelete(req.params.studentId);
+    res.json({ message: 'Student and all related data deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

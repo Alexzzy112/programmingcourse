@@ -10,6 +10,7 @@ const studentSchema = new mongoose.Schema({
   phone: { type: String, default: '' },
   department: { type: String, default: '' },
   profilePicture: { type: String, default: '' },
+  status: { type: String, enum: ['active', 'suspended'], default: 'active' },
   createdAt: { type: Date, default: Date.now }
 });
 
