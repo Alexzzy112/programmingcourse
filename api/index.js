@@ -13,29 +13,40 @@ const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://my_course:Alexzzy_11@
 let connPromise = null;
 
 function getDB() {
+  if (mongoose.connection.db) return mongoose.connection.db;
   const client = mongoose.connection.getClient();
   return client ? client.db() : null;
 }
 
 async function ensureConnected() {
-  if (mongoose.connection.readyState === 1) {
-    if (!getDB()) {
+  const maxAttempts = 3;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (mongoose.connection.readyState === 1) {
+      if (getDB()) return;
+      await mongoose.disconnect().catch(() => {});
       connPromise = null;
-      await mongoose.connect(mongoURI, {
+    } else {
+      connPromise = null;
+    }
+
+    try {
+      connPromise = mongoose.connect(mongoURI, {
         serverSelectionTimeoutMS: 20000,
         connectTimeoutMS: 20000
       });
-      return;
+      await connPromise;
+      connPromise = null;
+
+      if (getDB()) return;
+
+      await mongoose.disconnect().catch(() => {});
+    } catch (e) {
+      connPromise = null;
+      if (attempt === maxAttempts - 1) throw e;
+      await new Promise(r => setTimeout(r, 1500));
     }
-    return;
   }
-  if (!connPromise) {
-    connPromise = mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 20000,
-      connectTimeoutMS: 20000
-    });
-  }
-  await connPromise;
+  throw new Error('Failed to establish database connection');
 }
 
 app.use('/api', async (req, res, next) => {

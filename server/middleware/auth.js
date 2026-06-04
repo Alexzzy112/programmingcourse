@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
 function getDB() {
+  if (mongoose.connection.db) return mongoose.connection.db;
   const client = mongoose.connection.getClient();
   return client ? client.db() : null;
 }
