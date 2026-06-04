@@ -58,10 +58,11 @@ router.post('/lecturer/register', async (req, res) => {
 router.post('/lecturer/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
     const lecturer = await Lecturer.findOne({ email });
-    if (!lecturer || !(await lecturer.matchPassword(password))) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+    if (!lecturer) return res.status(401).json({ message: 'Invalid email or password' });
+    const isMatch = await lecturer.matchPassword(password);
+    if (!isMatch) return res.status(401).json({ message: 'Invalid email or password' });
     const token = generateToken(lecturer._id, 'lecturer');
     res.json({ token, user: { id: lecturer._id, firstName: lecturer.firstName, lastName: lecturer.lastName, email: lecturer.email, staffId: lecturer.staffId, role: 'lecturer' } });
   } catch (error) {
