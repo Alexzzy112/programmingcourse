@@ -14,14 +14,16 @@ const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://my_course:Alexzzy_11@
 
 let connPromise = null;
 
-function ensureConnected() {
+async function ensureConnected() {
+  if (mongoose.connection.readyState === 1) return;
   if (!connPromise) {
     connPromise = mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 15000,
-      connectTimeoutMS: 15000
+      serverSelectionTimeoutMS: 30000,
+      connectTimeoutMS: 30000
     });
   }
-  return connPromise;
+  await connPromise;
+  await new Promise(resolve => setTimeout(resolve, 500));
 }
 
 app.use('/api', async (req, res, next) => {
@@ -48,6 +50,19 @@ app.use('/api/grades', gradesRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', dbState: mongoose.connection.readyState === 1 ? 'connected' : 'connecting' });
+});
+
+app.get('/api/native-test', async (req, res) => {
+  try {
+    const db = mongoose.connection.db;
+    if (!db) return res.json({ error: 'db not available', readyState: mongoose.connection.readyState });
+    const lecturers = db.collection('lecturers');
+    const count = await lecturers.countDocuments();
+    const one = await lecturers.findOne({ email: 'alexzzy@course.com' });
+    res.json({ count, found: !!one, email: one?.email });
+  } catch (err) {
+    res.json({ error: err.message });
+  }
 });
 
 app.post('/api/test-login', async (req, res) => {
