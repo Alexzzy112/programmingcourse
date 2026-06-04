@@ -28,12 +28,12 @@ async function connectDB() {
 }
 
 app.use(async (req, res, next) => {
-  if (req.path === '/api/health') return next();
+  if (req.path === '/api/health' || !req.path.startsWith('/api/')) return next();
   try {
     await connectDB();
     next();
   } catch (err) {
-    res.status(503).json({ message: 'Database unavailable', error: err.message });
+    res.status(503).json({ message: 'Database unavailable', error: err.message, mongoURI: mongoURI.substring(0, 30) + '...' });
   }
 });
 
@@ -44,7 +44,11 @@ app.use('/api/submissions', require('../server/routes/submissions'));
 app.use('/api/grades', require('../server/routes/grades'));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Course Management API is running' });
+  res.json({ status: 'OK', message: 'Course Management API is running', dbState: mongoose.connection.readyState, mongoURI: (process.env.MONGODB_URI || 'using_fallback').substring(0, 40) + '...' });
+});
+
+app.post('/api/test-body', (req, res) => {
+  res.json({ body: req.body, received: true });
 });
 
 module.exports = app;
