@@ -145,12 +145,14 @@ const coursesRouter = require('../server/routes/courses');
 const assignmentsRouter = require('../server/routes/assignments');
 const submissionsRouter = require('../server/routes/submissions');
 const gradesRouter = require('../server/routes/grades');
+const notificationsRouter = require('../server/routes/notifications');
 
 app.use('/api/auth', authRouter);
 app.use('/api/courses', coursesRouter);
 app.use('/api/assignments', assignmentsRouter);
 app.use('/api/submissions', submissionsRouter);
 app.use('/api/grades', gradesRouter);
+app.use('/api/notifications', notificationsRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', dbState: mongoose.connection.readyState === 1 ? 'connected' : 'connecting' });

@@ -7,6 +7,7 @@ const studentLinks = [
   { to: '/student/course-registration', label: 'Register Courses', icon: '📝' },
   { to: '/student/assignments', label: 'Assignments', icon: '📋' },
   { to: '/student/grades', label: 'Grades & Feedback', icon: '⭐' },
+  { to: '/student/notifications', label: 'Notifications', icon: '🔔' },
   { to: '/student/profile', label: 'Profile', icon: '👤' },
 ];
 
@@ -15,6 +16,7 @@ const lecturerLinks = [
   { to: '/lecturer/courses', label: 'My Courses', icon: '📚' },
   { to: '/lecturer/assignments', label: 'Assignments', icon: '📋' },
   { to: '/lecturer/users', label: 'Users Management', icon: '👥' },
+  { to: '/lecturer/notifications', label: 'Notifications', icon: '🔔' },
   { to: '/lecturer/profile', label: 'Profile', icon: '👤' },
 ];
 

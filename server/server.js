@@ -18,6 +18,7 @@ app.use('/api/courses', require('./routes/courses'));
 app.use('/api/assignments', require('./routes/assignments'));
 app.use('/api/submissions', require('./routes/submissions'));
 app.use('/api/grades', require('./routes/grades'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Course Management API is running' });
