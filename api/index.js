@@ -64,7 +64,7 @@ app.post('/api/auth/lecturer/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
     const db = getDB();
-    if (!db) return res.status(503).json({ message: 'Database not available' });
+    if (!db) return res.status(503).json({ message: 'Server error' });
     const lecturers = db.collection('lecturers');
     const doc = await lecturers.findOne({ email });
     if (!doc) return res.status(401).json({ message: 'Invalid email or password' });
@@ -83,7 +83,7 @@ app.post('/api/auth/student/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
     const db = getDB();
-    if (!db) return res.status(503).json({ message: 'Database not available' });
+    if (!db) return res.status(503).json({ message: 'Server error' });
     const students = db.collection('students');
     const doc = await students.findOne({ email });
     if (!doc) return res.status(401).json({ message: 'Invalid email or password' });
@@ -102,7 +102,7 @@ app.post('/api/auth/lecturer/register', async (req, res) => {
     const { firstName, lastName, email, password, staffId, department, phone } = req.body;
     if (!firstName || !lastName || !email || !password || !staffId) return res.status(400).json({ message: 'All fields required' });
     const db = getDB();
-    if (!db) return res.status(503).json({ message: 'Database not available' });
+    if (!db) return res.status(503).json({ message: 'Server error' });
     const lecturers = db.collection('lecturers');
     const exists = await lecturers.findOne({ $or: [{ email }, { staffId }] });
     if (exists) return res.status(400).json({ message: 'Lecturer with this email or staff ID already exists' });
@@ -123,7 +123,7 @@ app.post('/api/auth/student/register', async (req, res) => {
     const { firstName, lastName, email, password, phone, department } = req.body;
     if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'All fields required' });
     const db = getDB();
-    if (!db) return res.status(503).json({ message: 'Database not available' });
+    if (!db) return res.status(503).json({ message: 'Server error' });
     const students = db.collection('students');
     const exists = await students.findOne({ email });
     if (exists) return res.status(400).json({ message: 'Student with this email already exists' });
