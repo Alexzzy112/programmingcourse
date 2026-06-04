@@ -13,6 +13,6 @@ const courseSchema = new mongoose.Schema({
   semester: { type: String, required: true },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
-});
+}, { bufferCommands: false });
 
 module.exports = mongoose.model('Course', courseSchema);

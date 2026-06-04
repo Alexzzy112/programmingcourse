@@ -11,7 +11,7 @@ const studentSchema = new mongoose.Schema({
   department: { type: String, default: '' },
   profilePicture: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
-});
+}, { bufferCommands: false });
 
 studentSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

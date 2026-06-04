@@ -11,7 +11,7 @@ const lecturerSchema = new mongoose.Schema({
   phone: { type: String, default: '' },
   profilePicture: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
-});
+}, { bufferCommands: false });
 
 lecturerSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

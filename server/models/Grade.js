@@ -11,6 +11,6 @@ const gradeSchema = new mongoose.Schema({
   feedback: { type: String, default: '' },
   gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Lecturer', required: true },
   gradedAt: { type: Date, default: Date.now }
-});
+}, { bufferCommands: false });
 
 module.exports = mongoose.model('Grade', gradeSchema);
