@@ -32,10 +32,13 @@ async function connectDB() {
 app.use(async (req, res, next) => {
   if (req.path === '/api/health') return next();
   try {
+    console.log('Connecting to DB...');
     await connectDB();
+    console.log('DB connected, state:', mongoose.connection.readyState);
     next();
   } catch (err) {
-    res.status(503).json({ message: 'Database connection failed', error: err.message });
+    console.error('DB connection error:', err.message);
+    res.status(503).json({ message: 'Database connection failed', error: err.message, stack: err.stack });
   }
 });
 
@@ -45,8 +48,32 @@ app.use('/api/assignments', require('../server/routes/assignments'));
 app.use('/api/submissions', require('../server/routes/submissions'));
 app.use('/api/grades', require('../server/routes/grades'));
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Course Management API is running' });
+app.get('/api/health', async (req, res) => {
+  let dbStatus = mongoose.connection.readyState;
+  let dbError = null;
+  if (dbStatus !== 1) {
+    try {
+      await connectDB();
+      dbStatus = mongoose.connection.readyState;
+    } catch (e) {
+      dbError = e.message;
+    }
+  }
+  res.json({
+    status: 'OK',
+    message: 'Course Management API is running',
+    dbState: ['disconnected','connected','connecting','disconnecting'][dbStatus] || dbStatus,
+    dbError
+  });
+});
+
+app.get('/api/test-db', async (req, res) => {
+  try {
+    await connectDB();
+    res.json({ connected: true, state: mongoose.connection.readyState, host: mongoose.connection.host });
+  } catch (err) {
+    res.json({ connected: false, error: err.message, stack: err.stack?.split('\n').slice(0, 3).join('; ') });
+  }
 });
 
 app.use((err, req, res, next) => {
