@@ -1,14 +1,19 @@
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
+function getDB() {
+  const client = mongoose.connection.getClient();
+  return client ? client.db() : null;
+}
+
 const protect = async (req, res, next) => {
   let token;
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const db = mongoose.connection.db;
-      if (!db) return res.status(500).json({ message: 'Database not available' });
+      const db = getDB();
+      if (!db) return res.status(503).json({ message: 'Database not available' });
 
       let user = null;
       if (decoded.role === 'student') {

@@ -38,7 +38,7 @@ export default function StudentRegister() {
         </div>
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-6">
-            <img src="/alex.png" alt="Alexzzy" className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-primary-100" />
+            <img src="/alex.jpg" alt="Alexzzy" className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-primary-100" />
             <h2 className="text-xl font-bold text-gray-900 mt-3">Welcome to Alexzzy Courses</h2>
           </div>
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{error}</div>}

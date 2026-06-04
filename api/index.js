@@ -12,8 +12,23 @@ const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://my_course:Alexzzy_11@
 
 let connPromise = null;
 
+function getDB() {
+  const client = mongoose.connection.getClient();
+  return client ? client.db() : null;
+}
+
 async function ensureConnected() {
-  if (mongoose.connection.readyState === 1) return;
+  if (mongoose.connection.readyState === 1) {
+    if (!getDB()) {
+      connPromise = null;
+      await mongoose.connect(mongoURI, {
+        serverSelectionTimeoutMS: 20000,
+        connectTimeoutMS: 20000
+      });
+      return;
+    }
+    return;
+  }
   if (!connPromise) {
     connPromise = mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 20000,
@@ -37,7 +52,8 @@ app.post('/api/auth/lecturer/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
-    const db = mongoose.connection.db;
+    const db = getDB();
+    if (!db) return res.status(503).json({ message: 'Database not available' });
     const lecturers = db.collection('lecturers');
     const doc = await lecturers.findOne({ email });
     if (!doc) return res.status(401).json({ message: 'Invalid email or password' });
@@ -55,7 +71,8 @@ app.post('/api/auth/student/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
-    const db = mongoose.connection.db;
+    const db = getDB();
+    if (!db) return res.status(503).json({ message: 'Database not available' });
     const students = db.collection('students');
     const doc = await students.findOne({ email });
     if (!doc) return res.status(401).json({ message: 'Invalid email or password' });
@@ -73,7 +90,8 @@ app.post('/api/auth/lecturer/register', async (req, res) => {
   try {
     const { firstName, lastName, email, password, staffId, department, phone } = req.body;
     if (!firstName || !lastName || !email || !password || !staffId) return res.status(400).json({ message: 'All fields required' });
-    const db = mongoose.connection.db;
+    const db = getDB();
+    if (!db) return res.status(503).json({ message: 'Database not available' });
     const lecturers = db.collection('lecturers');
     const exists = await lecturers.findOne({ $or: [{ email }, { staffId }] });
     if (exists) return res.status(400).json({ message: 'Lecturer with this email or staff ID already exists' });
@@ -93,7 +111,8 @@ app.post('/api/auth/student/register', async (req, res) => {
   try {
     const { firstName, lastName, email, password, phone, department } = req.body;
     if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'All fields required' });
-    const db = mongoose.connection.db;
+    const db = getDB();
+    if (!db) return res.status(503).json({ message: 'Database not available' });
     const students = db.collection('students');
     const exists = await students.findOne({ email });
     if (exists) return res.status(400).json({ message: 'Student with this email already exists' });
