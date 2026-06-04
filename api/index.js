@@ -22,13 +22,13 @@ function ensureConnected() {
   return connPromise;
 }
 
-app.get('/api/health', async (req, res) => {
+app.use('/api', async (req, res, next) => {
   try {
     await ensureConnected();
-    res.json({ status: 'OK', dbState: mongoose.connection.readyState === 1 ? 'connected' : 'connecting' });
+    next();
   } catch (e) {
     connPromise = null;
-    res.json({ status: 'OK', dbState: 'disconnected', error: e.message });
+    next(e);
   }
 });
 
@@ -44,16 +44,12 @@ app.use('/api/assignments', assignmentsRouter);
 app.use('/api/submissions', submissionsRouter);
 app.use('/api/grades', gradesRouter);
 
-app.use((err, req, res, next) => {
-  res.status(500).json({ message: 'Error', error: err.message });
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', dbState: mongoose.connection.readyState === 1 ? 'connected' : 'connecting' });
 });
 
-module.exports = async (req, res) => {
-  try {
-    await ensureConnected();
-    return app(req, res);
-  } catch (e) {
-    connPromise = null;
-    if (!res.headersSent) res.status(503).json({ message: 'Unable to connect to database', error: e.message });
-  }
-};
+app.use((err, req, res, next) => {
+  res.status(503).json({ message: 'Database unavailable', error: err.message });
+});
+
+module.exports = app;
