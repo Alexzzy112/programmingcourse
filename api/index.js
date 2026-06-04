@@ -17,7 +17,14 @@ if (!cached) cached = global.mongoose = { conn: null, promise: null };
 async function connectDB() {
   if (cached.conn) return cached.conn;
   if (!cached.promise) {
-    cached.promise = mongoose.connect(mongoURI).then(m => m);
+    mongoose.set('bufferCommands', false);
+    cached.promise = mongoose.connect(mongoURI, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000
+    }).then(m => m).catch(err => {
+      cached.promise = null;
+      throw err;
+    });
   }
   cached.conn = await cached.promise;
   return cached.conn;
@@ -34,6 +41,10 @@ app.get('/api/health', (req, res) => {
 });
 
 module.exports = async (req, res) => {
-  await connectDB();
-  return app(req, res);
+  try {
+    await connectDB();
+    return app(req, res);
+  } catch (err) {
+    res.status(500).json({ message: 'Database connection failed', error: err.message });
+  }
 };
