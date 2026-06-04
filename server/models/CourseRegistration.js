@@ -5,7 +5,7 @@ const courseRegistrationSchema = new mongoose.Schema({
   course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
   registeredAt: { type: Date, default: Date.now },
   status: { type: String, enum: ['active', 'dropped', 'completed'], default: 'active' }
-}, { bufferCommands: false });
+});
 
 courseRegistrationSchema.index({ student: 1, course: 1 }, { unique: true });
 

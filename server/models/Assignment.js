@@ -12,6 +12,6 @@ const assignmentSchema = new mongoose.Schema({
   instructions: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
-}, { bufferCommands: false });
+});
 
 module.exports = mongoose.model('Assignment', assignmentSchema);

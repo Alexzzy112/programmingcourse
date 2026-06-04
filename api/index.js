@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
+mongoose.set('bufferTimeoutMS', 30000);
+
 const app = express();
 
 app.use(cors());

@@ -11,7 +11,7 @@ const submissionSchema = new mongoose.Schema({
   submittedAt: { type: Date, default: Date.now },
   status: { type: String, enum: ['submitted', 'late', 'graded'], default: 'submitted' },
   remarks: { type: String, default: '' }
-}, { bufferCommands: false });
+});
 
 submissionSchema.index({ assignment: 1, student: 1 }, { unique: true });
 
