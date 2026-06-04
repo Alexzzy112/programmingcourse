@@ -2,9 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
-mongoose.set('bufferCommands', true);
-mongoose.set('bufferTimeoutMS', 60000);
-
 const app = express();
 
 app.use(cors());
@@ -26,12 +23,6 @@ async function ensureConnected() {
   await connPromise;
 }
 
-const authRouter = require('../server/routes/auth');
-const coursesRouter = require('../server/routes/courses');
-const assignmentsRouter = require('../server/routes/assignments');
-const submissionsRouter = require('../server/routes/submissions');
-const gradesRouter = require('../server/routes/grades');
-
 app.use('/api', async (req, res, next) => {
   try {
     await ensureConnected();
@@ -42,6 +33,89 @@ app.use('/api', async (req, res, next) => {
   }
 });
 
+app.post('/api/auth/lecturer/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
+    const db = mongoose.connection.db;
+    const lecturers = db.collection('lecturers');
+    const doc = await lecturers.findOne({ email });
+    if (!doc) return res.status(401).json({ message: 'Invalid email or password' });
+    const bcrypt = require('bcryptjs');
+    if (!(await bcrypt.compare(password, doc.password))) return res.status(401).json({ message: 'Invalid email or password' });
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: doc._id.toString(), role: 'lecturer' }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
+    res.json({ token, user: { id: doc._id.toString(), firstName: doc.firstName, lastName: doc.lastName, email: doc.email, staffId: doc.staffId, role: 'lecturer' } });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/auth/student/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
+    const db = mongoose.connection.db;
+    const students = db.collection('students');
+    const doc = await students.findOne({ email });
+    if (!doc) return res.status(401).json({ message: 'Invalid email or password' });
+    const bcrypt = require('bcryptjs');
+    if (!(await bcrypt.compare(password, doc.password))) return res.status(401).json({ message: 'Invalid email or password' });
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: doc._id.toString(), role: 'student' }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
+    res.json({ token, user: { id: doc._id.toString(), firstName: doc.firstName, lastName: doc.lastName, email: doc.email, studentId: doc.studentId, role: 'student' } });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/auth/lecturer/register', async (req, res) => {
+  try {
+    const { firstName, lastName, email, password, staffId, department, phone } = req.body;
+    if (!firstName || !lastName || !email || !password || !staffId) return res.status(400).json({ message: 'All fields required' });
+    const db = mongoose.connection.db;
+    const lecturers = db.collection('lecturers');
+    const exists = await lecturers.findOne({ $or: [{ email }, { staffId }] });
+    if (exists) return res.status(400).json({ message: 'Lecturer with this email or staff ID already exists' });
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    const result = await lecturers.insertOne({ firstName, lastName, email, password: hashedPassword, staffId, department: department || '', phone: phone || '', profilePicture: '', createdAt: new Date() });
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: result.insertedId.toString(), role: 'lecturer' }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
+    res.status(201).json({ token, user: { id: result.insertedId.toString(), firstName, lastName, email, staffId, role: 'lecturer' } });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/auth/student/register', async (req, res) => {
+  try {
+    const { firstName, lastName, email, password, phone, department } = req.body;
+    if (!firstName || !lastName || !email || !password) return res.status(400).json({ message: 'All fields required' });
+    const db = mongoose.connection.db;
+    const students = db.collection('students');
+    const exists = await students.findOne({ email });
+    if (exists) return res.status(400).json({ message: 'Student with this email already exists' });
+    const sid = 'STU' + Date.now().toString(36).toUpperCase();
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    const result = await students.insertOne({ firstName, lastName, email, password: hashedPassword, studentId: sid, phone: phone || '', department: department || '', profilePicture: '', createdAt: new Date() });
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: result.insertedId.toString(), role: 'student' }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
+    res.status(201).json({ token, user: { id: result.insertedId.toString(), firstName, lastName, email, studentId: sid, role: 'student' } });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+const authRouter = require('../server/routes/auth');
+const coursesRouter = require('../server/routes/courses');
+const assignmentsRouter = require('../server/routes/assignments');
+const submissionsRouter = require('../server/routes/submissions');
+const gradesRouter = require('../server/routes/grades');
+
 app.use('/api/auth', authRouter);
 app.use('/api/courses', coursesRouter);
 app.use('/api/assignments', assignmentsRouter);
@@ -50,56 +124,6 @@ app.use('/api/grades', gradesRouter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', dbState: mongoose.connection.readyState === 1 ? 'connected' : 'connecting' });
-});
-
-app.post('/api/hard-login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.json({ error: 'missing fields' });
-
-    const db = mongoose.connection.db;
-    const lecturers = db.collection('lecturers');
-    const lecturerDoc = await lecturers.findOne({ email });
-    if (!lecturerDoc) return res.json({ error: 'not found', email });
-
-    const bcrypt = require('bcryptjs');
-    const isMatch = await bcrypt.compare(password, lecturerDoc.password);
-    if (!isMatch) return res.json({ error: 'wrong password' });
-
-    const jwt = require('jsonwebtoken');
-    const token = jwt.sign({ id: lecturerDoc._id.toString(), role: 'lecturer' }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
-    res.json({ success: true, token });
-  } catch (err) {
-    res.json({ error: err.message, stack: err.stack?.split('\n').slice(0, 3).join(' | ') });
-  }
-});
-
-app.post('/api/seed-admin', async (req, res) => {
-  try {
-    const db = mongoose.connection.db;
-    const lecturers = db.collection('lecturers');
-    const existing = await lecturers.findOne({ email: 'alexzzy@course.com' });
-    if (existing) return res.json({ message: 'admin already exists' });
-
-    const bcrypt = require('bcryptjs');
-    const salt = await bcrypt.genSalt(12);
-    const hashedPassword = await bcrypt.hash('Alexzzy11', salt);
-
-    await lecturers.insertOne({
-      firstName: 'Alexzzy',
-      lastName: 'Admin',
-      email: 'alexzzy@course.com',
-      password: hashedPassword,
-      staffId: 'ADMIN001',
-      department: 'Computer Science',
-      phone: '',
-      profilePicture: '',
-      createdAt: new Date()
-    });
-    res.json({ message: 'admin created' });
-  } catch (err) {
-    res.json({ error: err.message });
-  }
 });
 
 app.use((err, req, res, next) => {
