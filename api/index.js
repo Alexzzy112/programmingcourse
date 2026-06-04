@@ -2,8 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
-mongoose.set('bufferTimeoutMS', 30000);
-
 const app = express();
 
 app.use(cors());
@@ -18,13 +16,19 @@ async function ensureConnected() {
   if (mongoose.connection.readyState === 1) return;
   if (!connPromise) {
     connPromise = mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 30000,
-      connectTimeoutMS: 30000
+      serverSelectionTimeoutMS: 15000,
+      connectTimeoutMS: 15000
     });
   }
   await connPromise;
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise(r => setTimeout(r, 100));
 }
+
+const authRouter = require('../server/routes/auth');
+const coursesRouter = require('../server/routes/courses');
+const assignmentsRouter = require('../server/routes/assignments');
+const submissionsRouter = require('../server/routes/submissions');
+const gradesRouter = require('../server/routes/grades');
 
 app.use('/api', async (req, res, next) => {
   try {
@@ -35,12 +39,6 @@ app.use('/api', async (req, res, next) => {
     next(e);
   }
 });
-
-const authRouter = require('../server/routes/auth');
-const coursesRouter = require('../server/routes/courses');
-const assignmentsRouter = require('../server/routes/assignments');
-const submissionsRouter = require('../server/routes/submissions');
-const gradesRouter = require('../server/routes/grades');
 
 app.use('/api/auth', authRouter);
 app.use('/api/courses', coursesRouter);
@@ -55,7 +53,6 @@ app.get('/api/health', (req, res) => {
 app.get('/api/native-test', async (req, res) => {
   try {
     const db = mongoose.connection.db;
-    if (!db) return res.json({ error: 'db not available', readyState: mongoose.connection.readyState });
     const lecturers = db.collection('lecturers');
     const count = await lecturers.countDocuments();
     const one = await lecturers.findOne({ email: 'alexzzy@course.com' });
@@ -65,19 +62,25 @@ app.get('/api/native-test', async (req, res) => {
   }
 });
 
-app.post('/api/test-login', async (req, res) => {
+app.post('/api/hard-login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) return res.json({ error: 'missing fields' });
+
+    const db = mongoose.connection.db;
+    const lecturers = db.collection('lecturers');
+    const lecturerDoc = await lecturers.findOne({ email });
+    if (!lecturerDoc) return res.json({ error: 'not found', email });
+
+    const bcrypt = require('bcryptjs');
+    const isMatch = await bcrypt.compare(password, lecturerDoc.password);
+    if (!isMatch) return res.json({ error: 'wrong password' });
+
     const jwt = require('jsonwebtoken');
-    const Lecturer = require('../server/models/Lecturer');
-    const lecturer = await Lecturer.findOne({ email });
-    if (!lecturer) return res.json({ step: 'findOne', found: false, email, jwtSecret: process.env.JWT_SECRET ? 'set' : 'MISSING' });
-    const isMatch = await lecturer.matchPassword(password);
-    if (!isMatch) return res.json({ step: 'matchPassword', match: false });
-    const token = jwt.sign({ id: lecturer._id, role: 'lecturer' }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
-    res.json({ step: 'success', token: token?.substring(0, 20) + '...' });
+    const token = jwt.sign({ id: lecturerDoc._id.toString(), role: 'lecturer' }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
+    res.json({ success: true, token: token?.substring(0, 30) + '...' });
   } catch (err) {
-    res.json({ step: 'error', message: err.message, stack: err.stack?.split('\n').slice(0, 4).join(' | ') });
+    res.json({ error: err.message, stack: err.stack?.split('\n').slice(0, 3).join(' | ') });
   }
 });
 
