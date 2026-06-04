@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const serverless = require('serverless-http');
 
 const app = express();
 
@@ -11,21 +10,23 @@ app.use(express.urlencoded({ extended: true }));
 
 const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://my_course:Alexzzy_11@cluster0.dcfjjzb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
-let connPromise = null;
+let cached = global.mongoose;
+if (!cached) cached = global.mongoose = { conn: null, promise: null };
 
 async function connectDB() {
-  if (mongoose.connection.readyState === 1) return;
-  if (!connPromise) {
+  if (cached.conn) return cached.conn;
+  if (!cached.promise) {
     mongoose.set('bufferCommands', false);
-    connPromise = mongoose.connect(mongoURI, {
+    cached.promise = mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 10000,
       connectTimeoutMS: 10000
-    }).catch(err => {
-      connPromise = null;
+    }).then(m => m).catch(err => {
+      cached.promise = null;
       throw err;
     });
   }
-  await connPromise;
+  cached.conn = await cached.promise;
+  return cached.conn;
 }
 
 app.use(async (req, res, next) => {
@@ -34,7 +35,7 @@ app.use(async (req, res, next) => {
     await connectDB();
     next();
   } catch (err) {
-    res.status(503).json({ message: 'Database unavailable', error: err.message });
+    res.status(503).json({ message: 'Database connection failed', error: err.message });
   }
 });
 
@@ -45,7 +46,13 @@ app.use('/api/submissions', require('../server/routes/submissions'));
 app.use('/api/grades', require('../server/routes/grades'));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Course Management API is running', dbState: mongoose.connection.readyState });
+  res.json({ status: 'OK', message: 'Course Management API is running' });
 });
 
-module.exports.handler = serverless(app);
+app.use((err, req, res, next) => {
+  res.status(500).json({ message: 'Internal server error', error: err.message });
+});
+
+module.exports = async (req, res) => {
+  return app(req, res);
+};
