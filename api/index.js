@@ -70,9 +70,27 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/test-db', async (req, res) => {
   try {
     await connectDB();
-    res.json({ connected: true, state: mongoose.connection.readyState, host: mongoose.connection.host });
+    const Lecturer = require('../server/models/Lecturer');
+    const count = await Lecturer.countDocuments();
+    res.json({ connected: true, state: mongoose.connection.readyState, host: mongoose.connection.host, lecturerCount: count });
   } catch (err) {
     res.json({ connected: false, error: err.message, stack: err.stack?.split('\n').slice(0, 3).join('; ') });
+  }
+});
+
+app.post('/api/test-error', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    await connectDB();
+    const Lecturer = require('../server/models/Lecturer');
+    const lecturer = await Lecturer.findOne({ email });
+    if (!lecturer) {
+      return res.json({ found: false, email });
+    }
+    const match = await lecturer.matchPassword(password);
+    res.json({ found: true, match, jwtSecret: process.env.JWT_SECRET ? 'set' : 'missing', jwtExpire: process.env.JWT_EXPIRE || '30d' });
+  } catch (err) {
+    res.json({ error: err.message, stack: err.stack?.split('\n').slice(0, 3).join('; ') });
   }
 });
 
