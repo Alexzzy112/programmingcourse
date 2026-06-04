@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
+mongoose.set('bufferCommands', true);
+mongoose.set('bufferTimeoutMS', 60000);
+
 const app = express();
 
 app.use(cors());
@@ -16,12 +19,11 @@ async function ensureConnected() {
   if (mongoose.connection.readyState === 1) return;
   if (!connPromise) {
     connPromise = mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 15000,
-      connectTimeoutMS: 15000
+      serverSelectionTimeoutMS: 20000,
+      connectTimeoutMS: 20000
     });
   }
   await connPromise;
-  await new Promise(r => setTimeout(r, 100));
 }
 
 const authRouter = require('../server/routes/auth');
@@ -50,18 +52,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', dbState: mongoose.connection.readyState === 1 ? 'connected' : 'connecting' });
 });
 
-app.get('/api/native-test', async (req, res) => {
-  try {
-    const db = mongoose.connection.db;
-    const lecturers = db.collection('lecturers');
-    const count = await lecturers.countDocuments();
-    const one = await lecturers.findOne({ email: 'alexzzy@course.com' });
-    res.json({ count, found: !!one, email: one?.email });
-  } catch (err) {
-    res.json({ error: err.message });
-  }
-});
-
 app.post('/api/hard-login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -78,7 +68,7 @@ app.post('/api/hard-login', async (req, res) => {
 
     const jwt = require('jsonwebtoken');
     const token = jwt.sign({ id: lecturerDoc._id.toString(), role: 'lecturer' }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
-    res.json({ success: true, token: token?.substring(0, 30) + '...' });
+    res.json({ success: true, token });
   } catch (err) {
     res.json({ error: err.message, stack: err.stack?.split('\n').slice(0, 3).join(' | ') });
   }
