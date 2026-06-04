@@ -1,11 +1,6 @@
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
-
-function getDB() {
-  if (mongoose.connection.db) return mongoose.connection.db;
-  const client = mongoose.connection.getClient();
-  return client ? client.db() : null;
-}
+const Student = require('../models/Student');
+const Lecturer = require('../models/Lecturer');
 
 const protect = async (req, res, next) => {
   let token;
@@ -13,16 +8,12 @@ const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const db = getDB();
-      if (!db) return res.status(503).json({ message: 'Database not available' });
 
       let user = null;
       if (decoded.role === 'student') {
-        const doc = await db.collection('students').findOne({ _id: new mongoose.Types.ObjectId(decoded.id) }, { projection: { password: 0 } });
-        if (doc) { user = { ...doc, _id: doc._id.toString() }; }
+        user = await Student.findById(decoded.id).select('-password').lean();
       } else {
-        const doc = await db.collection('lecturers').findOne({ _id: new mongoose.Types.ObjectId(decoded.id) }, { projection: { password: 0 } });
-        if (doc) { user = { ...doc, _id: doc._id.toString() }; }
+        user = await Lecturer.findById(decoded.id).select('-password').lean();
       }
 
       req.user = user;
