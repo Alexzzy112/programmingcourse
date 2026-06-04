@@ -60,6 +60,28 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
+app.post('/api/test-login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    await connectDB();
+    const Lecturer = require('../server/models/Lecturer');
+    const lecturer = await Lecturer.findOne({ email });
+    if (!lecturer) return res.json({ step: 'findOne', found: false, email });
+    const match = await lecturer.matchPassword(password);
+    if (!match) return res.json({ step: 'matchPassword', match: false });
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: lecturer._id, role: 'lecturer' }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '30d' });
+    res.json({
+      step: 'success',
+      token: token ? token.substring(0, 20) + '...' : null,
+      jwtSecret: process.env.JWT_SECRET ? 'set(' + process.env.JWT_SECRET.substring(0, 3) + '...)' : 'MISSING',
+      jwtExpire: process.env.JWT_EXPIRE || '30d(default)'
+    });
+  } catch (err) {
+    res.json({ step: 'error', message: err.message, stack: err.stack?.split('\n').slice(0, 3).join('; ') });
+  }
+});
+
 app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Error', error: err.message });
 });
