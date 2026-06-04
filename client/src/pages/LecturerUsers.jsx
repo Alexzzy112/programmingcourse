@@ -35,7 +35,7 @@ export default function LecturerUsers() {
     <Layout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Users Management</h1>
-        <p className="text-gray-500">Manage students enrolled in your courses</p>
+        <p className="text-gray-500">Manage all registered students</p>
       </div>
 
       {message.text && (
@@ -46,7 +46,7 @@ export default function LecturerUsers() {
 
       <div className="card">
         {allStudents.length === 0 ? (
-          <p className="text-gray-500 text-sm py-8 text-center">No students enrolled in your courses</p>
+          <p className="text-gray-500 text-sm py-8 text-center">No registered users</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -61,11 +61,11 @@ export default function LecturerUsers() {
                 </tr>
               </thead>
               <tbody>
-                {allStudents.map((item) => {
+                {allStudents.map((item, idx) => {
                   const s = item.student;
                   const c = item.course;
                   return (
-                    <tr key={item.registrationId} className="border-b last:border-0 hover:bg-gray-50">
+                    <tr key={item.registrationId || `unreg-${s?._id}-${idx}`} className="border-b last:border-0 hover:bg-gray-50">
                       <td className="py-3 pr-3">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-700 text-xs font-bold">
@@ -76,7 +76,7 @@ export default function LecturerUsers() {
                       </td>
                       <td className="py-3 pr-3 text-xs text-gray-500">{s?.email}</td>
                       <td className="py-3 pr-3 text-xs text-gray-500">{s?.studentId}</td>
-                      <td className="py-3 pr-3 text-xs">{c?.code}</td>
+                      <td className="py-3 pr-3 text-xs">{c?.code || '—'}</td>
                       <td className="py-3 pr-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           item.status === 'active' ? 'bg-green-100 text-green-700' :
@@ -85,12 +85,18 @@ export default function LecturerUsers() {
                         }`}>{item.status}</span>
                       </td>
                       <td className="py-3 flex gap-1">
-                        {item.status === 'suspended' ? (
-                          <button onClick={() => handleAction(s._id, c._id, 'approve')} className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700 transition">Approve</button>
+                        {c ? (
+                          <>
+                            {item.status === 'suspended' ? (
+                              <button onClick={() => handleAction(s._id, c._id, 'approve')} className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700 transition">Approve</button>
+                            ) : (
+                              <button onClick={() => handleAction(s._id, c._id, 'suspend')} className="bg-orange-500 text-white text-xs px-3 py-1.5 rounded hover:bg-orange-600 transition">Suspend</button>
+                            )}
+                            <button onClick={() => handleAction(s._id, c._id, 'delete')} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded hover:bg-red-700 transition">Delete</button>
+                          </>
                         ) : (
-                          <button onClick={() => handleAction(s._id, c._id, 'suspend')} className="bg-orange-500 text-white text-xs px-3 py-1.5 rounded hover:bg-orange-600 transition">Suspend</button>
+                          <span className="text-xs text-gray-400">—</span>
                         )}
-                        <button onClick={() => handleAction(s._id, c._id, 'delete')} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded hover:bg-red-700 transition">Delete</button>
                       </td>
                     </tr>
                   );

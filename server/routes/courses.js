@@ -1,6 +1,7 @@
 const express = require('express');
 const Course = require('../models/Course');
 const CourseRegistration = require('../models/CourseRegistration');
+const Student = require('../models/Student');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
@@ -141,17 +142,46 @@ router.get('/:id/students', protect, authorize('lecturer'), async (req, res) => 
 
 router.get('/students/all', protect, authorize('lecturer'), async (req, res) => {
   try {
-    const courseIds = await Course.find({ lecturer: req.user._id }).distinct('_id');
-    const registrations = await CourseRegistration.find({ course: { $in: courseIds } })
+    const allStudents = await Student.find({}).select('-password').sort({ createdAt: -1 }).lean();
+    const registrations = await CourseRegistration.find({})
+      .populate('course', 'code title')
       .populate('student', 'firstName lastName email studentId department profilePicture')
-      .populate('course', 'code title');
-    const result = registrations.map(r => ({
-      registrationId: r._id,
-      student: r.student,
-      course: r.course,
-      status: r.status,
-      registeredAt: r.registeredAt
-    }));
+      .lean();
+
+    const regByStudent = {};
+    for (const r of registrations) {
+      const sid = r.student?._id?.toString() || r.student?.toString();
+      if (!sid) continue;
+      if (!regByStudent[sid]) regByStudent[sid] = [];
+      regByStudent[sid].push(r);
+    }
+
+    const seen = new Set();
+    const result = [];
+    for (const s of allStudents) {
+      const sid = s._id.toString();
+      const regs = regByStudent[sid] || [];
+      if (regs.length === 0) {
+        result.push({
+          registrationId: null,
+          student: s,
+          course: null,
+          status: 'not registered',
+          registeredAt: null
+        });
+      } else {
+        for (const r of regs) {
+          result.push({
+            registrationId: r._id,
+            student: r.student,
+            course: r.course,
+            status: r.status,
+            registeredAt: r.registeredAt
+          });
+          seen.add(sid);
+        }
+      }
+    }
     res.json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -234,7 +264,8 @@ router.get('/stats', protect, authorize('lecturer'), async (req, res) => {
       status: 'active'
     });
     const activeCourses = await Course.countDocuments({ lecturer: req.user._id, isActive: true });
-    res.json({ totalCourses, totalEnrolledStudents: totalStudents.length, activeCourses });
+    const totalRegisteredUsers = await Student.countDocuments({});
+    res.json({ totalCourses, totalEnrolledStudents: totalStudents.length, activeCourses, totalRegisteredUsers });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

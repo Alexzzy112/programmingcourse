@@ -4,7 +4,7 @@ import api from '../utils/api';
 import { Link } from 'react-router-dom';
 
 export default function LecturerDashboard() {
-  const [stats, setStats] = useState({ totalCourses: 0, totalEnrolledStudents: 0, activeCourses: 0 });
+  const [stats, setStats] = useState({ totalCourses: 0, totalEnrolledStudents: 0, activeCourses: 0, totalRegisteredUsers: 0 });
   const [recentCourses, setRecentCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -116,7 +116,7 @@ export default function LecturerDashboard() {
         <p className="text-gray-500">Manage your courses and track progress</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
         <div className="dashboard-card">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-lg sm:text-xl">📚</div>
@@ -141,6 +141,15 @@ export default function LecturerDashboard() {
             <div>
               <p className="text-xl sm:text-2xl font-bold">{stats.activeCourses}</p>
               <p className="text-sm text-gray-500">Active Courses</p>
+            </div>
+          </div>
+        </div>
+        <div className="dashboard-card">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 text-lg sm:text-xl">📋</div>
+            <div>
+              <p className="text-xl sm:text-2xl font-bold">{stats.totalRegisteredUsers}</p>
+              <p className="text-sm text-gray-500">Registered Users</p>
             </div>
           </div>
         </div>
@@ -319,7 +328,7 @@ export default function LecturerDashboard() {
         {studentsLoading ? (
           <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-500 border-t-transparent"></div></div>
         ) : allStudents.length === 0 ? (
-          <p className="text-gray-500 text-sm">No students enrolled in your courses</p>
+          <p className="text-gray-500 text-sm">No registered users</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -334,29 +343,35 @@ export default function LecturerDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {allStudents.map((item) => {
+                {allStudents.map((item, idx) => {
                   const student = item.student;
                   const course = item.course;
                   return (
-                    <tr key={item.registrationId} className="border-b last:border-0">
+                    <tr key={item.registrationId || `unreg-${student?._id}-${idx}`} className="border-b last:border-0">
                       <td className="py-3 pr-3">
                         <p className="font-medium">{student?.firstName} {student?.lastName}</p>
                       </td>
                       <td className="py-3 pr-3 text-xs text-gray-500">{student?.email}</td>
                       <td className="py-3 pr-3 text-xs text-gray-500">{student?.studentId}</td>
-                      <td className="py-3 pr-3 text-xs">{course?.code}</td>
+                      <td className="py-3 pr-3 text-xs">{course?.code || '—'}</td>
                       <td className="py-3 pr-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${item.status === 'active' ? 'bg-green-100 text-green-700' : item.status === 'suspended' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
                           {item.status}
                         </span>
                       </td>
                       <td className="py-3 flex gap-1">
-                        {item.status === 'suspended' ? (
-                          <button onClick={() => handleStudentAction(student._id, course._id, 'approve')} className="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700 transition">Approve</button>
+                        {course ? (
+                          <>
+                            {item.status === 'suspended' ? (
+                              <button onClick={() => handleStudentAction(student._id, course._id, 'approve')} className="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700 transition">Approve</button>
+                            ) : (
+                              <button onClick={() => handleStudentAction(student._id, course._id, 'suspend')} className="bg-orange-500 text-white text-xs px-2 py-1 rounded hover:bg-orange-600 transition">Suspend</button>
+                            )}
+                            <button onClick={() => handleStudentAction(student._id, course._id, 'delete')} className="bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700 transition">Delete</button>
+                          </>
                         ) : (
-                          <button onClick={() => handleStudentAction(student._id, course._id, 'suspend')} className="bg-orange-500 text-white text-xs px-2 py-1 rounded hover:bg-orange-600 transition">Suspend</button>
+                          <span className="text-xs text-gray-400">—</span>
                         )}
-                        <button onClick={() => handleStudentAction(student._id, course._id, 'delete')} className="bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700 transition">Delete</button>
                       </td>
                     </tr>
                   );
