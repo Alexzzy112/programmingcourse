@@ -58,8 +58,15 @@ router.post('/register', protect, authorize('student'), async (req, res) => {
     if (course.enrolledCount >= course.maxStudents) {
       return res.status(400).json({ message: 'Course is full' });
     }
-    const existing = await CourseRegistration.findOne({ student: req.user._id, course: courseId, status: 'active' });
-    if (existing) return res.status(400).json({ message: 'Already registered for this course' });
+    const existing = await CourseRegistration.findOne({ student: req.user._id, course: courseId });
+    if (existing) {
+      if (existing.status === 'active') return res.status(400).json({ message: 'Already registered for this course' });
+      existing.status = 'active';
+      await existing.save();
+      course.enrolledCount += 1;
+      await course.save();
+      return res.json({ message: 'Registration reactivated successfully' });
+    }
     await CourseRegistration.create({ student: req.user._id, course: courseId });
     course.enrolledCount += 1;
     await course.save();
@@ -127,6 +134,93 @@ router.get('/:id/students', protect, authorize('lecturer'), async (req, res) => 
     const registrations = await CourseRegistration.find({ course: req.params.id, status: 'active' })
       .populate('student', 'firstName lastName email studentId department profilePicture');
     res.json(registrations.map(r => r.student));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/students/all', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const courseIds = await Course.find({ lecturer: req.user._id }).distinct('_id');
+    const registrations = await CourseRegistration.find({ course: { $in: courseIds } })
+      .populate('student', 'firstName lastName email studentId department profilePicture')
+      .populate('course', 'code title');
+    const result = registrations.map(r => ({
+      registrationId: r._id,
+      student: r.student,
+      course: r.course,
+      status: r.status,
+      registeredAt: r.registeredAt
+    }));
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/:courseId/students/:studentId/suspend', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const course = await Course.findOne({ _id: req.params.courseId, lecturer: req.user._id });
+    if (!course) return res.status(404).json({ message: 'Course not found' });
+    const registration = await CourseRegistration.findOne({ student: req.params.studentId, course: req.params.courseId });
+    if (!registration) return res.status(404).json({ message: 'Registration not found' });
+    registration.status = 'suspended';
+    await registration.save();
+    course.enrolledCount = Math.max(0, course.enrolledCount - 1);
+    await course.save();
+    res.json({ message: 'Student suspended successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/:courseId/students/:studentId/approve', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const course = await Course.findOne({ _id: req.params.courseId, lecturer: req.user._id });
+    if (!course) return res.status(404).json({ message: 'Course not found' });
+    const registration = await CourseRegistration.findOne({ student: req.params.studentId, course: req.params.courseId });
+    if (!registration) return res.status(404).json({ message: 'Registration not found' });
+    registration.status = 'active';
+    await registration.save();
+    course.enrolledCount += 1;
+    await course.save();
+    res.json({ message: 'Student approved successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/:courseId/students/:studentId', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const course = await Course.findOne({ _id: req.params.courseId, lecturer: req.user._id });
+    if (!course) return res.status(404).json({ message: 'Course not found' });
+    const registration = await CourseRegistration.findOneAndDelete({ student: req.params.studentId, course: req.params.courseId });
+    if (!registration) return res.status(404).json({ message: 'Registration not found' });
+    if (registration.status === 'active') {
+      course.enrolledCount = Math.max(0, course.enrolledCount - 1);
+      await course.save();
+    }
+    res.json({ message: 'Student removed from course successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/:id', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const course = await Course.findOne({ _id: req.params.id, lecturer: req.user._id });
+    if (!course) return res.status(404).json({ message: 'Course not found' });
+    const Assignment = require('../models/Assignment');
+    const Submission = require('../models/Submission');
+    const Grade = require('../models/Grade');
+    await Promise.all([
+      CourseRegistration.deleteMany({ course: course._id }),
+      Assignment.deleteMany({ course: course._id }),
+      Submission.deleteMany({ course: course._id }),
+      Grade.deleteMany({ course: course._id })
+    ]);
+    await Course.findByIdAndDelete(course._id);
+    res.json({ message: 'Course and all related data deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

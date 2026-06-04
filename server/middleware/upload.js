@@ -12,19 +12,19 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /pdf|docx?|zip|png|jpg|jpeg/;
+  const allowedTypes = /pdf|docx?|txt/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
   if (extname || mimetype) {
     cb(null, true);
   } else {
-    cb(new Error('Only PDF, DOCX, ZIP, and image files are allowed'), false);
+    cb(new Error('Only PDF, DOCX, and TXT files are allowed'), false);
   }
 };
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 1 * 1024 * 1024 },
   fileFilter
 });
 

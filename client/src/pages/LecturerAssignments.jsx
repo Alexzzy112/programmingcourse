@@ -56,6 +56,20 @@ export default function LecturerAssignments() {
     window.open(`/api/submissions/download/${filename}`, '_blank');
   };
 
+  const handleDeleteAssignment = async (assignmentId, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this assignment? All submissions and grades for this assignment will also be removed.')) return;
+    try {
+      await api.delete(`/assignments/${assignmentId}`);
+      setMessage({ type: 'success', text: 'Assignment deleted successfully' });
+      if (selectedAssignment?._id === assignmentId) { setSelectedAssignment(null); setSubmissions([]); }
+      fetchData();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to delete assignment' });
+    }
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  };
+
   const handleGrade = async (submissionId) => {
     const marks = prompt('Enter marks obtained:');
     if (!marks) return;
@@ -147,9 +161,12 @@ export default function LecturerAssignments() {
                   <h3 className="font-semibold">{a.title}</h3>
                   <p className="text-xs text-gray-400 mt-1">Due: {new Date(a.dueDate).toLocaleDateString()}</p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${a.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {a.isActive ? 'Active' : 'Inactive'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-1 rounded-full ${a.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {a.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                  <button onClick={(e) => handleDeleteAssignment(a._id, e)} className="text-red-500 hover:text-red-700 text-lg leading-none" title="Delete assignment">&times;</button>
+                </div>
               </div>
             </div>
           ))}

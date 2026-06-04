@@ -7,6 +7,12 @@ export default function StudentDashboard() {
   const [stats, setStats] = useState({ courses: 0, assignments: 0, pendingSubmissions: 0, grades: 0 });
   const [recentAssignments, setRecentAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingAssignments, setPendingAssignments] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [submitState, setSubmitState] = useState({});
+  const [submitting, setSubmitting] = useState(null);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,21 +25,25 @@ export default function StudentDashboard() {
         ]);
         const courses = coursesRes.data;
         const allAssignments = assignmentsRes.data;
-        const submissions = submissionsRes.data;
+        const subs = submissionsRes.data;
         const grades = gradesRes.data;
 
         const registeredCourseIds = courses.map(c => c._id);
         const courseAssignments = allAssignments.filter(a => registeredCourseIds.includes(a.course?._id));
 
-        const submittedIds = new Set(submissions.map(s => s.assignment?._id));
-        const pendingSubmissions = courseAssignments.filter(a => !submittedIds.has(a._id) && new Date(a.dueDate) > new Date());
+        const submittedIds = new Set(subs.map(s => s.assignment?._id));
+        const pending = courseAssignments.filter(a => !submittedIds.has(a._id) && new Date(a.dueDate) > new Date());
+        const overdue = courseAssignments.filter(a => !submittedIds.has(a._id) && new Date(a.dueDate) <= new Date());
 
         setStats({
           courses: courses.length,
           assignments: courseAssignments.length,
-          pendingSubmissions: pendingSubmissions.length,
+          pendingSubmissions: pending.length,
           grades: grades.length
         });
+
+        setSubmissions(subs);
+        setPendingAssignments(pending);
 
         const sorted = [...courseAssignments].sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate)).slice(0, 5);
         setRecentAssignments(sorted);
@@ -45,6 +55,50 @@ export default function StudentDashboard() {
     };
     fetchData();
   }, []);
+
+  const handleFileChange = (assignmentId, file) => {
+    setSubmitState(prev => ({ ...prev, [assignmentId]: { ...prev[assignmentId], file } }));
+    setSubmitError('');
+  };
+
+  const handleTextChange = (assignmentId, text) => {
+    setSubmitState(prev => ({ ...prev, [assignmentId]: { ...prev[assignmentId], text } }));
+    setSubmitError('');
+  };
+
+  const handleSubmit = async (assignmentId) => {
+    const state = submitState[assignmentId] || {};
+    const file = state.file;
+    const text = state.text || '';
+
+    if (!file && !text.trim()) {
+      setSubmitError('Please upload a file or enter text content');
+      return;
+    }
+
+    setSubmitting(assignmentId);
+    setSubmitError('');
+    setSubmitSuccess('');
+
+    const formData = new FormData();
+    if (file) formData.append('file', file);
+    formData.append('assignmentId', assignmentId);
+    formData.append('textContent', text);
+
+    try {
+      await api.post('/submissions/submit', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setSubmitSuccess(`Assignment submitted successfully!`);
+      setPendingAssignments(prev => prev.filter(a => a._id !== assignmentId));
+      setSubmitState(prev => { const n = { ...prev }; delete n[assignmentId]; return n; });
+      setStats(prev => ({ ...prev, pendingSubmissions: prev.pendingSubmissions - 1 }));
+    } catch (err) {
+      setSubmitError(err.response?.data?.message || 'Submission failed');
+    } finally {
+      setSubmitting(null);
+    }
+  };
 
   if (loading) return <Layout><div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div></div></Layout>;
 
@@ -94,7 +148,7 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6 mb-8">
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Quick Actions</h2>
@@ -148,6 +202,55 @@ export default function StudentDashboard() {
           )}
         </div>
       </div>
+
+      {pendingAssignments.length > 0 && (
+        <div className="card mb-6">
+          <h2 className="text-lg font-semibold mb-4">Submit Pending Assignments</h2>
+          {submitError && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{submitError}</div>}
+          {submitSuccess && <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-4">{submitSuccess}</div>}
+          <div className="space-y-4">
+            {pendingAssignments.map((a) => {
+              const state = submitState[a._id] || {};
+              return (
+                <div key={a._id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-medium text-sm">{a.title}</p>
+                      <p className="text-xs text-gray-500">{a.course?.code} - Due: {new Date(a.dueDate).toLocaleString()}</p>
+                    </div>
+                    <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Pending</span>
+                  </div>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-primary-400 transition cursor-pointer mb-2" onClick={() => document.getElementById(`file-${a._id}`).click()}>
+                    <p className="text-xs text-gray-500 mb-1">Click to upload PDF/DOCX/TXT or drag file</p>
+                    <p className="text-xs text-gray-400">Max 1MB</p>
+                    <input id={`file-${a._id}`} type="file" className="hidden" accept=".pdf,.doc,.docx,.txt" onChange={(e) => handleFileChange(a._id, e.target.files[0])} />
+                  </div>
+                  {state.file && (
+                    <div className="mb-2 p-2 bg-primary-50 rounded-lg flex items-center justify-between">
+                      <span className="text-xs font-medium">{state.file.name}</span>
+                      <button type="button" onClick={() => handleFileChange(a._id, null)} className="text-red-500 text-xs">Remove</button>
+                    </div>
+                  )}
+                  <textarea
+                    value={state.text || ''}
+                    onChange={(e) => handleTextChange(a._id, e.target.value)}
+                    placeholder="Or type your answer here..."
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-lg p-2 text-sm outline-none resize-y focus:ring-2 focus:ring-primary-500 mb-2"
+                  />
+                  <button
+                    onClick={() => handleSubmit(a._id)}
+                    disabled={submitting === a._id || (!state.file && !(state.text || '').trim())}
+                    className="w-full bg-primary-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    {submitting === a._id ? 'Submitting...' : 'Submit'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

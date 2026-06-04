@@ -8,6 +8,7 @@ export default function AssignmentSubmission() {
   const navigate = useNavigate();
   const [assignment, setAssignment] = useState(null);
   const [file, setFile] = useState(null);
+  const [textContent, setTextContent] = useState('');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
@@ -22,22 +23,25 @@ export default function AssignmentSubmission() {
       .catch(() => navigate('/student/assignments'));
   }, [id, navigate]);
 
+  const canSubmit = (file || textContent.trim()) && !uploading;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return setError('Please select a file');
+    if (!file && !textContent.trim()) return setError('Please upload a file or enter text content');
     setError('');
     setUploading(true);
     setProgress(0);
 
     const formData = new FormData();
-    formData.append('file', file);
+    if (file) formData.append('file', file);
     formData.append('assignmentId', id);
+    formData.append('textContent', textContent);
 
     try {
-      const { data } = await api.post('/submissions/submit', formData, {
+      await api.post('/submissions/submit', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => {
-          setProgress(Math.round((e.loaded * 100) / e.total));
+          if (e.total) setProgress(Math.round((e.loaded * 100) / e.total));
         }
       });
       setSuccess('Assignment submitted successfully!');
@@ -76,8 +80,8 @@ export default function AssignmentSubmission() {
           )}
           <div className="text-sm text-gray-500 space-y-1">
             <p>Due: {new Date(assignment.dueDate).toLocaleString()}</p>
-            <p>Allowed file types: {assignment.fileTypes?.join(', ') || 'PDF, DOCX, ZIP, Images'}</p>
-            <p>Max file size: {assignment.maxFileSize || 10}MB</p>
+            <p>Allowed file types: {assignment.fileTypes?.join(', ') || 'PDF, DOCX, TXT'}</p>
+            <p>Max file size: {assignment.maxFileSize || 1}MB</p>
             {isOverdue && <p className="text-red-600 font-medium">⚠ This assignment is overdue - submission will be marked as late</p>}
           </div>
         </div>
@@ -90,12 +94,12 @@ export default function AssignmentSubmission() {
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-8 text-center hover:border-primary-400 transition cursor-pointer" onClick={() => document.getElementById('fileInput').click()}>
               <div className="text-3xl sm:text-4xl mb-3">📁</div>
               <p className="text-sm text-gray-500 mb-1">Drag and drop your file here or click to browse</p>
-              <p className="text-xs text-gray-400">PDF, DOCX, ZIP, PNG, JPG (Max {assignment.maxFileSize || 10}MB)</p>
+              <p className="text-xs text-gray-400">PDF, DOCX, TXT (Max 1MB)</p>
               <input
                 id="fileInput"
                 type="file"
                 className="hidden"
-                accept=".pdf,.doc,.docx,.zip,.png,.jpg,.jpeg"
+                accept=".pdf,.doc,.docx,.txt"
                 onChange={(e) => {
                   setFile(e.target.files[0]);
                   setError('');
@@ -112,6 +116,18 @@ export default function AssignmentSubmission() {
                 <button type="button" onClick={() => setFile(null)} className="text-red-500 text-sm">Remove</button>
               </div>
             )}
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Or type your answer below</label>
+              <textarea
+                value={textContent}
+                onChange={(e) => { setTextContent(e.target.value); setError(''); }}
+                placeholder="Type your answer here..."
+                rows={6}
+                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-y"
+              />
+            </div>
+
             {uploading && (
               <div className="mt-4">
                 <div className="flex justify-between text-sm mb-1">
@@ -123,7 +139,7 @@ export default function AssignmentSubmission() {
                 </div>
               </div>
             )}
-            <button type="submit" disabled={!file || uploading} className="btn-primary w-full mt-4 py-3">
+            <button type="submit" disabled={!canSubmit} className="btn-primary w-full mt-4 py-3">
               {uploading ? 'Uploading...' : 'Submit Assignment'}
             </button>
           </form>

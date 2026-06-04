@@ -7,8 +7,8 @@ const assignmentSchema = new mongoose.Schema({
   lecturer: { type: mongoose.Schema.Types.ObjectId, ref: 'Lecturer', required: true },
   dueDate: { type: Date, required: true },
   totalMarks: { type: Number, required: true, default: 100 },
-  fileTypes: { type: [String], default: ['pdf', 'docx', 'zip', 'png', 'jpg', 'jpeg'] },
-  maxFileSize: { type: Number, default: 10 },
+  fileTypes: { type: [String], default: ['pdf', 'docx', 'txt'] },
+  maxFileSize: { type: Number, default: 1 },
   instructions: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }

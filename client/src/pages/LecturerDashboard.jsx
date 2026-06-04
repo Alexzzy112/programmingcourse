@@ -8,23 +8,104 @@ export default function LecturerDashboard() {
   const [recentCourses, setRecentCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [pendingSubmissions, setPendingSubmissions] = useState([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(true);
+  const [gradeInputs, setGradeInputs] = useState({});
+  const [gradeError, setGradeError] = useState('');
+  const [gradeSuccess, setGradeSuccess] = useState('');
+  const [gradingId, setGradingId] = useState(null);
+
+  const [allStudents, setAllStudents] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
+  const [studentActionMsg, setStudentActionMsg] = useState('');
+  const [assignments, setAssignments] = useState([]);
+  const [submissionsCount, setSubmissionsCount] = useState({});
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, coursesRes] = await Promise.all([
+        const [statsRes, coursesRes, submissionsRes, studentsRes, assignRes] = await Promise.all([
           api.get('/courses/stats'),
-          api.get('/courses')
+          api.get('/courses'),
+          api.get('/submissions/pending'),
+          api.get('/courses/students/all'),
+          api.get('/assignments')
         ]);
         setStats(statsRes.data);
         setRecentCourses(coursesRes.data.slice(0, 5));
+        setPendingSubmissions(submissionsRes.data);
+        setSubmissionsLoading(false);
+        setAllStudents(studentsRes.data);
+        setStudentsLoading(false);
+        setAssignments(assignRes.data);
+
+        const counts = {};
+        for (const a of assignRes.data) {
+          try {
+            const subs = await api.get(`/submissions/assignment/${a._id}`);
+            counts[a._id] = Array.isArray(subs.data) ? subs.data.length : 0;
+          } catch { counts[a._id] = 0; }
+        }
+        setSubmissionsCount(counts);
       } catch (err) {
         console.error(err);
+        setSubmissionsLoading(false);
+        setStudentsLoading(false);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, []);
+
+  const handleGradeSubmit = async (submissionId, totalMarks) => {
+    const input = gradeInputs[submissionId] || {};
+    const marksObtained = parseFloat(input.marks);
+    const feedback = input.feedback || '';
+
+    if (isNaN(marksObtained) || marksObtained < 0) {
+      setGradeError('Please enter valid marks');
+      return;
+    }
+    if (marksObtained > totalMarks) {
+      setGradeError(`Marks cannot exceed ${totalMarks}`);
+      return;
+    }
+
+    setGradingId(submissionId);
+    setGradeError('');
+    setGradeSuccess('');
+
+    try {
+      await api.post('/grades', { submissionId, marksObtained, feedback });
+      setGradeSuccess('Grade submitted successfully!');
+      setPendingSubmissions(prev => prev.filter(s => s._id !== submissionId));
+      setGradeInputs(prev => { const n = { ...prev }; delete n[submissionId]; return n; });
+    } catch (err) {
+      setGradeError(err.response?.data?.message || 'Grading failed');
+    } finally {
+      setGradingId(null);
+    }
+  };
+
+  const handleStudentAction = async (studentId, courseId, action) => {
+    setStudentActionMsg('');
+    try {
+      let res;
+      if (action === 'suspend') {
+        res = await api.put(`/courses/${courseId}/students/${studentId}/suspend`);
+      } else if (action === 'approve') {
+        res = await api.put(`/courses/${courseId}/students/${studentId}/approve`);
+      } else if (action === 'delete') {
+        res = await api.delete(`/courses/${courseId}/students/${studentId}`);
+      }
+      setStudentActionMsg(res.data.message);
+      const updated = await api.get('/courses/students/all');
+      setAllStudents(updated.data);
+    } catch (err) {
+      setStudentActionMsg(err.response?.data?.message || 'Action failed');
+    }
+  };
 
   if (loading) return <Layout><div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div></div></Layout>;
 
@@ -65,7 +146,54 @@ export default function LecturerDashboard() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="card mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">All Assignments</h2>
+          <Link to="/lecturer/assignments" className="text-sm text-primary-600 hover:underline">Manage</Link>
+        </div>
+        {assignments.length === 0 ? (
+          <p className="text-gray-500 text-sm">No assignments yet</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-gray-500">
+                  <th className="pb-2 pr-3 font-medium">Title</th>
+                  <th className="pb-2 pr-3 font-medium">Course</th>
+                  <th className="pb-2 pr-3 font-medium">Due Date</th>
+                  <th className="pb-2 pr-3 font-medium">Marks</th>
+                  <th className="pb-2 pr-3 font-medium">Submissions</th>
+                  <th className="pb-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignments.map((a) => {
+                  const due = new Date(a.dueDate);
+                  const isOverdue = due < new Date();
+                  return (
+                    <tr key={a._id} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="py-3 pr-3 font-medium">{a.title}</td>
+                      <td className="py-3 pr-3 text-xs text-gray-500">{a.course?.code}</td>
+                      <td className={`py-3 pr-3 text-xs ${isOverdue ? 'text-red-600' : 'text-gray-500'}`}>
+                        {due.toLocaleDateString()} {isOverdue && '⚠'}
+                      </td>
+                      <td className="py-3 pr-3 text-xs">{a.totalMarks}</td>
+                      <td className="py-3 pr-3 text-xs">{submissionsCount[a._id] || 0}</td>
+                      <td className="py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${a.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {a.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6 mb-8">
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Quick Actions</h2>
@@ -102,6 +230,141 @@ export default function LecturerDashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="card mb-6">
+        <h2 className="text-lg font-semibold mb-4">Pending Submissions for Grading</h2>
+        {submissionsLoading ? (
+          <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-500 border-t-transparent"></div></div>
+        ) : pendingSubmissions.length === 0 ? (
+          <p className="text-gray-500 text-sm">No pending submissions</p>
+        ) : (
+          <>
+            {gradeError && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{gradeError}</div>}
+            {gradeSuccess && <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-4">{gradeSuccess}</div>}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="pb-2 pr-3 font-medium">Student</th>
+                    <th className="pb-2 pr-3 font-medium">Assignment</th>
+                    <th className="pb-2 pr-3 font-medium">Course</th>
+                    <th className="pb-2 pr-3 font-medium">Submitted</th>
+                    <th className="pb-2 pr-3 font-medium">Content</th>
+                    <th className="pb-2 pr-3 font-medium">Marks / Total</th>
+                    <th className="pb-2 font-medium">Feedback</th>
+                    <th className="pb-2 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingSubmissions.map((s) => {
+                    const input = gradeInputs[s._id] || {};
+                    return (
+                      <tr key={s._id} className="border-b last:border-0">
+                        <td className="py-3 pr-3">
+                          <p className="font-medium">{s.student?.firstName} {s.student?.lastName}</p>
+                          <p className="text-xs text-gray-400">{s.student?.studentId}</p>
+                        </td>
+                        <td className="py-3 pr-3">{s.assignment?.title}</td>
+                        <td className="py-3 pr-3 text-xs">{s.assignment?.course?.code || s.course?.code || '-'}</td>
+                        <td className="py-3 pr-3 text-xs">{new Date(s.submittedAt).toLocaleDateString()}</td>
+                        <td className="py-3 pr-3">
+                          {s.fileUrl && <a href={`/api/submissions/download/${s.fileUrl}`} className="text-primary-600 underline text-xs" target="_blank">View File</a>}
+                          {s.fileUrl && s.textContent && <span className="mx-1 text-gray-300">|</span>}
+                          {s.textContent && <span className="text-xs text-gray-600 line-clamp-2" title={s.textContent}>{s.textContent.substring(0, 60)}{s.textContent.length > 60 ? '...' : ''}</span>}
+                          {!s.fileUrl && !s.textContent && <span className="text-xs text-gray-400">-</span>}
+                        </td>
+                        <td className="py-3 pr-3">
+                          <input
+                            type="number"
+                            min="0"
+                            max={s.assignment?.totalMarks || 100}
+                            placeholder={`0/${s.assignment?.totalMarks || 100}`}
+                            value={input.marks || ''}
+                            onChange={(e) => setGradeInputs(prev => ({ ...prev, [s._id]: { ...prev[s._id], marks: e.target.value } }))}
+                            className="w-20 border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </td>
+                        <td className="py-3 pr-3">
+                          <input
+                            type="text"
+                            placeholder="Feedback..."
+                            value={input.feedback || ''}
+                            onChange={(e) => setGradeInputs(prev => ({ ...prev, [s._id]: { ...prev[s._id], feedback: e.target.value } }))}
+                            className="w-28 border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </td>
+                        <td className="py-3">
+                          <button
+                            onClick={() => handleGradeSubmit(s._id, s.assignment?.totalMarks || 100)}
+                            disabled={gradingId === s._id}
+                            className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50 transition"
+                          >
+                            {gradingId === s._id ? '...' : 'Grade'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="card">
+        <h2 className="text-lg font-semibold mb-4">Student Management</h2>
+        {studentActionMsg && <div className="bg-blue-50 text-blue-700 p-3 rounded-lg text-sm mb-4">{studentActionMsg}</div>}
+        {studentsLoading ? (
+          <div className="flex justify-center py-6"><div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-500 border-t-transparent"></div></div>
+        ) : allStudents.length === 0 ? (
+          <p className="text-gray-500 text-sm">No students enrolled in your courses</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-gray-500">
+                  <th className="pb-2 pr-3 font-medium">Student</th>
+                  <th className="pb-2 pr-3 font-medium">Email</th>
+                  <th className="pb-2 pr-3 font-medium">ID</th>
+                  <th className="pb-2 pr-3 font-medium">Course</th>
+                  <th className="pb-2 pr-3 font-medium">Status</th>
+                  <th className="pb-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allStudents.map((item) => {
+                  const student = item.student;
+                  const course = item.course;
+                  return (
+                    <tr key={item.registrationId} className="border-b last:border-0">
+                      <td className="py-3 pr-3">
+                        <p className="font-medium">{student?.firstName} {student?.lastName}</p>
+                      </td>
+                      <td className="py-3 pr-3 text-xs text-gray-500">{student?.email}</td>
+                      <td className="py-3 pr-3 text-xs text-gray-500">{student?.studentId}</td>
+                      <td className="py-3 pr-3 text-xs">{course?.code}</td>
+                      <td className="py-3 pr-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${item.status === 'active' ? 'bg-green-100 text-green-700' : item.status === 'suspended' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="py-3 flex gap-1">
+                        {item.status === 'suspended' ? (
+                          <button onClick={() => handleStudentAction(student._id, course._id, 'approve')} className="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700 transition">Approve</button>
+                        ) : (
+                          <button onClick={() => handleStudentAction(student._id, course._id, 'suspend')} className="bg-orange-500 text-white text-xs px-2 py-1 rounded hover:bg-orange-600 transition">Suspend</button>
+                        )}
+                        <button onClick={() => handleStudentAction(student._id, course._id, 'delete')} className="bg-red-600 text-white text-xs px-2 py-1 rounded hover:bg-red-700 transition">Delete</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </Layout>
   );

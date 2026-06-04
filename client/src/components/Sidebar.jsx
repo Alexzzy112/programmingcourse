@@ -14,6 +14,7 @@ const lecturerLinks = [
   { to: '/lecturer/dashboard', label: 'Dashboard', icon: '📊' },
   { to: '/lecturer/courses', label: 'My Courses', icon: '📚' },
   { to: '/lecturer/assignments', label: 'Assignments', icon: '📋' },
+  { to: '/lecturer/users', label: 'Users Management', icon: '👥' },
   { to: '/lecturer/profile', label: 'Profile', icon: '👤' },
 ];
 

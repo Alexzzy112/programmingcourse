@@ -88,11 +88,18 @@ router.get('/profile', protect, async (req, res) => {
 router.put('/profile', protect, async (req, res) => {
   try {
     const { firstName, lastName, phone, department } = req.body;
-    req.user.firstName = firstName || req.user.firstName;
-    req.user.lastName = lastName || req.user.lastName;
-    req.user.phone = phone !== undefined ? phone : req.user.phone;
-    req.user.department = department !== undefined ? department : req.user.department;
-    await req.user.save();
+    const mongoose = require('mongoose');
+    const db = mongoose.connection.db;
+    const collectionName = req.userRole === 'student' ? 'students' : 'lecturers';
+    const update = {};
+    if (firstName) update.firstName = firstName;
+    if (lastName) update.lastName = lastName;
+    if (phone !== undefined) update.phone = phone;
+    if (department !== undefined) update.department = department;
+    const result = await db.collection(collectionName).updateOne(
+      { _id: new mongoose.Types.ObjectId(req.user._id) },
+      { $set: update }
+    );
     res.json({ message: 'Profile updated successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

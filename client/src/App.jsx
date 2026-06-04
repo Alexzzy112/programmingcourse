@@ -15,6 +15,7 @@ import Profile from './pages/Profile';
 import LecturerDashboard from './pages/LecturerDashboard';
 import LecturerCourses from './pages/LecturerCourses';
 import LecturerAssignments from './pages/LecturerAssignments';
+import LecturerUsers from './pages/LecturerUsers';
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
       <Route path="/lecturer/dashboard" element={<ProtectedRoute role="lecturer"><LecturerDashboard /></ProtectedRoute>} />
       <Route path="/lecturer/courses" element={<ProtectedRoute role="lecturer"><LecturerCourses /></ProtectedRoute>} />
       <Route path="/lecturer/assignments" element={<ProtectedRoute role="lecturer"><LecturerAssignments /></ProtectedRoute>} />
+      <Route path="/lecturer/users" element={<ProtectedRoute role="lecturer"><LecturerUsers /></ProtectedRoute>} />
       <Route path="/lecturer/profile" element={<ProtectedRoute role="lecturer"><Profile /></ProtectedRoute>} />
     </Routes>
   );

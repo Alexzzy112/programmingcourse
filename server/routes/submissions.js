@@ -8,10 +8,17 @@ const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/submit', protect, authorize('student'), upload.single('file'), async (req, res) => {
+router.post('/submit', protect, authorize('student'), (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) return res.status(400).json({ message: err.message });
+    next();
+  });
+}, async (req, res) => {
   try {
-    const { assignmentId } = req.body;
-    if (!req.file) return res.status(400).json({ message: 'Please upload a file' });
+    const { assignmentId, textContent } = req.body;
+    if (!req.file && !textContent?.trim()) {
+      return res.status(400).json({ message: 'Please upload a file or enter text content' });
+    }
     const assignment = await Assignment.findById(assignmentId);
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
     if (!assignment.isActive) return res.status(400).json({ message: 'Assignment is no longer accepting submissions' });
@@ -20,16 +27,20 @@ router.post('/submit', protect, authorize('student'), upload.single('file'), asy
     const existing = await Submission.findOne({ assignment: assignmentId, student: req.user._id });
     if (existing) return res.status(400).json({ message: 'You have already submitted this assignment' });
     const isLate = new Date() > new Date(assignment.dueDate);
-    const submission = await Submission.create({
+    const submissionData = {
       assignment: assignmentId,
       student: req.user._id,
       course: assignment.course,
-      fileUrl: req.file.filename,
-      originalName: req.file.originalname,
-      fileType: req.file.mimetype,
-      fileSize: req.file.size,
+      textContent: textContent?.trim() || '',
       status: isLate ? 'late' : 'submitted'
-    });
+    };
+    if (req.file) {
+      submissionData.fileUrl = req.file.filename;
+      submissionData.originalName = req.file.originalname;
+      submissionData.fileType = req.file.mimetype;
+      submissionData.fileSize = req.file.size;
+    }
+    const submission = await Submission.create(submissionData);
     res.status(201).json(submission);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -65,6 +76,19 @@ router.get('/assignment/:assignmentId', protect, async (req, res) => {
       return res.json(submissions);
     }
     res.status(403).json({ message: 'Not authorized' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/pending', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const courseIds = await require('../models/Course').find({ lecturer: req.user._id }).distinct('_id');
+    const submissions = await Submission.find({ course: { $in: courseIds }, status: { $in: ['submitted', 'late'] } })
+      .populate('student', 'firstName lastName email studentId')
+      .populate({ path: 'assignment', select: 'title totalMarks dueDate', populate: { path: 'course', select: 'code title' } })
+      .sort({ submittedAt: -1 });
+    res.json(submissions);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

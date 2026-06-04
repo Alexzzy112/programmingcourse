@@ -34,6 +34,20 @@ export default function LecturerCourses() {
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
+  const handleDelete = async (courseId, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this course? This will also delete all assignments, submissions, and grades for this course.')) return;
+    try {
+      await api.delete(`/courses/${courseId}`);
+      setMessage({ type: 'success', text: 'Course deleted successfully' });
+      if (selectedCourse?._id === courseId) { setSelectedCourse(null); setStudents([]); }
+      fetchCourses();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to delete course' });
+    }
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  };
+
   const loadStudents = async (courseId) => {
     try {
       const { data } = await api.get(`/courses/${courseId}/students`);
@@ -129,9 +143,12 @@ export default function LecturerCourses() {
                     <span>{course.schedule || 'No schedule'}</span>
                   </div>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${course.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {course.isActive ? 'Active' : 'Inactive'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-1 rounded-full ${course.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {course.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                  <button onClick={(e) => handleDelete(course._id, e)} className="text-red-500 hover:text-red-700 text-lg leading-none" title="Delete course">&times;</button>
+                </div>
               </div>
             </div>
           ))}
