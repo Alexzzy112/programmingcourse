@@ -128,10 +128,20 @@ router.get('/download/:submissionId', protect, async (req, res) => {
   try {
     const submission = await Submission.findById(req.params.submissionId);
     if (!submission) return res.status(404).json({ message: 'Submission not found' });
-    if (!submission.fileData) return res.status(404).json({ message: 'File not found' });
-    res.set('Content-Type', submission.fileType || 'application/octet-stream');
-    res.set('Content-Disposition', `attachment; filename="${submission.originalName || 'file'}"`);
-    res.send(submission.fileData);
+
+    if (submission.fileData) {
+      res.set('Content-Type', submission.fileType || 'application/octet-stream');
+      res.set('Content-Disposition', `attachment; filename="${submission.originalName || 'file'}"`);
+      return res.send(submission.fileData);
+    }
+
+    if (submission.fileUrl) {
+      const dir = process.env.VERCEL ? '/tmp/uploads' : require('path').join(__dirname, '../uploads');
+      const filePath = require('path').join(dir, submission.fileUrl);
+      if (require('fs').existsSync(filePath)) return res.download(filePath);
+    }
+
+    res.status(404).json({ message: 'File not found' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
