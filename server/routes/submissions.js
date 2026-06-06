@@ -108,28 +108,6 @@ router.get('/course/:courseId', protect, authorize('lecturer'), async (req, res)
   }
 });
 
-router.delete('/:id', protect, authorize('lecturer'), async (req, res) => {
-  try {
-    const submission = await Submission.findById(req.params.id).populate('assignment');
-    if (!submission) return res.status(404).json({ message: 'Submission not found' });
-    const course = await Course.findById(submission.course);
-    if (!course || course.lecturer.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-    if (submission.fileUrl) {
-      const path = require('path');
-      const fs = require('fs');
-      const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../uploads');
-      const filePath = path.join(uploadDir, submission.fileUrl);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
-    await Submission.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Submission deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
 router.get('/download/:filename', protect, (req, res) => {
   const path = require('path');
   const fs = require('fs');

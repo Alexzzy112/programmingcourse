@@ -17,16 +17,6 @@ export default function LecturerDashboard() {
 
   const [downloadError, setDownloadError] = useState('');
 
-  const handleDeleteSubmission = async (submissionId) => {
-    if (!window.confirm('Delete this submission? This cannot be undone.')) return;
-    try {
-      await api.delete(`/submissions/${submissionId}`);
-      setPendingSubmissions(prev => prev.filter(s => s._id !== submissionId));
-    } catch (err) {
-      setGradeError(err.response?.data?.message || 'Failed to delete submission');
-    }
-  };
-
   const downloadFile = async (fileUrl) => {
     try {
       setDownloadError('');
@@ -313,12 +303,6 @@ export default function LecturerDashboard() {
                             className="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700 disabled:opacity-50 transition"
                           >
                             {gradingId === s._id ? '...' : 'Grade'}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSubmission(s._id)}
-                            className="text-red-600 text-xs ml-2 hover:text-red-800"
-                          >
-                            Delete
                           </button>
                         </td>
                       </tr>

@@ -86,19 +86,6 @@ export default function LecturerAssignments() {
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
-  const handleDeleteSubmission = async (submissionId, e) => {
-    e.stopPropagation();
-    if (!window.confirm('Delete this submission? This cannot be undone.')) return;
-    try {
-      await api.delete(`/submissions/${submissionId}`);
-      setMessage({ type: 'success', text: 'Submission deleted' });
-      loadSubmissions(selectedAssignment);
-    } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to delete submission' });
-    }
-    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-  };
-
   const handleGrade = async (submissionId) => {
     const marks = prompt('Enter marks obtained:');
     if (!marks) return;
@@ -232,7 +219,6 @@ export default function LecturerAssignments() {
                     {s.status !== 'graded' && (
                       <button onClick={() => handleGrade(s._id)} className="text-xs btn-primary">Grade</button>
                     )}
-                    <button onClick={(e) => handleDeleteSubmission(s._id, e)} className="text-xs text-red-600 hover:text-red-800">Delete</button>
                   </div>
                   {s.status === 'graded' && (
                     <p className="text-xs text-green-600 mt-1">✓ Graded</p>
