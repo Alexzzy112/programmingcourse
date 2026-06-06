@@ -53,15 +53,15 @@ export default function LecturerAssignments() {
     }
   };
 
-  const downloadFile = async (submissionId, originalName) => {
+  const downloadFile = async (filename) => {
     try {
       setDownloadError('');
-      if (!submissionId) { setDownloadError('No file uploaded for this submission'); return; }
-      const response = await api.get(`/submissions/download/${submissionId}`, { responseType: 'blob' });
+      if (!filename) { setDownloadError('No file uploaded for this submission'); return; }
+      const response = await api.get(`/submissions/download/${filename}`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', originalName || 'file');
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -228,7 +228,7 @@ export default function LecturerAssignments() {
                     {s.fileSize != null && <span className="text-xs text-gray-400">({(s.fileSize / 1024 / 1024).toFixed(2)} MB)</span>}
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => downloadFile(s._id, s.originalName)} className="text-xs btn-secondary">Download</button>
+                    <button onClick={() => downloadFile(s.fileUrl)} className="text-xs btn-secondary">Download</button>
                     {s.status !== 'graded' && (
                       <button onClick={() => handleGrade(s._id)} className="text-xs btn-primary">Grade</button>
                     )}
