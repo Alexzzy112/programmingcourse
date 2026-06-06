@@ -21,7 +21,7 @@ export default function StudentAssignments() {
   }, []);
 
   const getSubmissionStatus = (assignmentId) => {
-    const sub = submissions.find(s => s.assignment?._id === assignmentId);
+    const sub = submissions.find(s => s.assignment?._id?.toString() === assignmentId.toString());
     if (!sub) return null;
     return sub;
   };

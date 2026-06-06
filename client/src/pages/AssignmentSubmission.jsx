@@ -17,7 +17,7 @@ export default function AssignmentSubmission() {
   useEffect(() => {
     api.get(`/assignments`)
       .then(({ data }) => {
-        const a = data.find(d => d._id === id);
+        const a = data.find(d => d._id.toString() === id);
         setAssignment(a);
       })
       .catch(() => navigate('/student/assignments'));

@@ -1,6 +1,7 @@
 const express = require('express');
 const Assignment = require('../models/Assignment');
 const Course = require('../models/Course');
+const CourseRegistration = require('../models/CourseRegistration');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
@@ -13,6 +14,13 @@ router.get('/', protect, async (req, res) => {
     if (req.userRole === 'lecturer') {
       const courses = await Course.find({ lecturer: req.user._id }).distinct('_id');
       query.course = courseId || { $in: courses };
+    }
+    if (req.userRole === 'student') {
+      const registeredCourseIds = await CourseRegistration.find({
+        student: req.user._id,
+        status: 'active'
+      }).distinct('course');
+      query.course = courseId || { $in: registeredCourseIds };
     }
     const assignments = await Assignment.find(query)
       .populate('course', 'code title')

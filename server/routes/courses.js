@@ -133,7 +133,7 @@ router.get('/:id/students', protect, authorize('lecturer'), async (req, res) => 
     const course = await Course.findOne({ _id: req.params.id, lecturer: req.user._id });
     if (!course) return res.status(404).json({ message: 'Course not found' });
     const registrations = await CourseRegistration.find({ course: req.params.id, status: 'active' })
-      .populate('student', 'firstName lastName email studentId department profilePicture');
+      .populate('student', 'firstName lastName email studentId department profilePicture phone status');
     res.json(registrations.map(r => r.student));
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -145,7 +145,7 @@ router.get('/students/all', protect, authorize('lecturer'), async (req, res) => 
     const allStudents = await Student.find({}).select('-password').sort({ createdAt: -1 }).lean();
     const registrations = await CourseRegistration.find({})
       .populate('course', 'code title')
-      .populate('student', 'firstName lastName email studentId department profilePicture')
+      .populate('student', 'firstName lastName email studentId department profilePicture phone status')
       .lean();
 
     const regByStudent = {};

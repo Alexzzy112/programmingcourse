@@ -9,6 +9,7 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [pendingAssignments, setPendingAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [submitState, setSubmitState] = useState({});
   const [submitting, setSubmitting] = useState(null);
   const [submitError, setSubmitError] = useState('');
@@ -17,23 +18,25 @@ export default function StudentDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [coursesRes, assignmentsRes, submissionsRes, gradesRes] = await Promise.all([
+        const [coursesRes, assignmentsRes, submissionsRes, gradesRes, notifRes] = await Promise.all([
           api.get('/courses/registered'),
           api.get('/assignments'),
           api.get('/submissions/my-submissions'),
-          api.get('/grades/my-grades')
+          api.get('/grades/my-grades'),
+          api.get('/notifications')
         ]);
         const courses = coursesRes.data;
         const allAssignments = assignmentsRes.data;
         const subs = submissionsRes.data;
         const grades = gradesRes.data;
+        const notifications = notifRes.data;
 
-        const registeredCourseIds = courses.map(c => c._id);
-        const courseAssignments = allAssignments.filter(a => registeredCourseIds.includes(a.course?._id));
+        const registeredCourseIds = courses.map(c => c._id.toString());
+        const courseAssignments = allAssignments.filter(a => registeredCourseIds.includes(a.course?._id?.toString()));
 
-        const submittedIds = new Set(subs.map(s => s.assignment?._id));
-        const pending = courseAssignments.filter(a => !submittedIds.has(a._id) && new Date(a.dueDate) > new Date());
-        const overdue = courseAssignments.filter(a => !submittedIds.has(a._id) && new Date(a.dueDate) <= new Date());
+        const submittedIds = new Set(subs.map(s => s.assignment?._id?.toString()));
+        const pending = courseAssignments.filter(a => !submittedIds.has(a._id.toString()) && new Date(a.dueDate) > new Date());
+        const overdue = courseAssignments.filter(a => !submittedIds.has(a._id.toString()) && new Date(a.dueDate) <= new Date());
 
         setStats({
           courses: courses.length,
@@ -44,6 +47,7 @@ export default function StudentDashboard() {
 
         setSubmissions(subs);
         setPendingAssignments(pending);
+        setNotifications(notifications.slice(0, 5));
 
         const sorted = [...courseAssignments].sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate)).slice(0, 5);
         setRecentAssignments(sorted);
@@ -202,6 +206,27 @@ export default function StudentDashboard() {
           )}
         </div>
       </div>
+
+      {notifications.length > 0 && (
+        <div className="card mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Recent Notifications</h2>
+            <Link to="/student/notifications" className="text-sm text-primary-600 hover:underline">View all</Link>
+          </div>
+          <div className="space-y-3">
+            {notifications.map(n => (
+              <div key={n._id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-sm flex-shrink-0">🔔</div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{n.title}</p>
+                  <p className="text-xs text-gray-500 line-clamp-1">{n.message}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{n.sender?.firstName} {n.sender?.lastName} · {new Date(n.createdAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {pendingAssignments.length > 0 && (
         <div className="card mb-6">

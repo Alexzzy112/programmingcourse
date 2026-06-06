@@ -136,7 +136,7 @@ export default function LecturerUsers() {
                   <th className="pb-3 pr-3 font-medium">Student</th>
                   <th className="pb-3 pr-3 font-medium">Email</th>
                   <th className="pb-3 pr-3 font-medium">Student ID</th>
-                  <th className="pb-3 pr-3 font-medium">Courses</th>
+
                   <th className="pb-3 pr-3 font-medium">Account</th>
                   <th className="pb-3 font-medium">Actions</th>
                 </tr>
@@ -157,32 +157,7 @@ export default function LecturerUsers() {
                       </td>
                       <td className="py-3 pr-3 text-xs text-gray-500">{s?.email}</td>
                       <td className="py-3 pr-3 text-xs text-gray-500">{s?.studentId}</td>
-                      <td className="py-3 pr-3">
-                        {group.registrations.length === 0 ? (
-                          <span className="text-xs text-gray-400">—</span>
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            {group.registrations.map((item) => {
-                              const c = item.course;
-                              return (
-                                <div key={item.registrationId} className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-medium">{c?.code || '—'}</span>
-                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                    item.status === 'active' ? 'bg-green-100 text-green-700' :
-                                    item.status === 'suspended' ? 'bg-red-100 text-red-700' :
-                                    'bg-gray-100 text-gray-500'
-                                  }`}>{item.status}</span>
-                                  {item.status === 'suspended' ? (
-                                    <button onClick={() => handleAction(s._id, c._id, 'approve')} className="bg-green-600 text-white text-xs px-2 py-0.5 rounded hover:bg-green-700 transition">Approve</button>
-                                  ) : (
-                                    <button onClick={() => handleAction(s._id, c._id, 'suspend')} className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded hover:bg-orange-600 transition">Suspend</button>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </td>
+
                       <td className="py-3 pr-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${accountSus ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                           {accountSus ? 'Suspended' : 'Active'}
