@@ -48,12 +48,9 @@ router.post('/submit', protect, authorize('student'), (req, res, next) => {
   }
 });
 
-const listSelect = '-fileData';
-
 router.get('/my-submissions', protect, authorize('student'), async (req, res) => {
   try {
     const submissions = await Submission.find({ student: req.user._id })
-      .select(listSelect)
       .populate({ path: 'assignment', populate: { path: 'course', select: 'code title' } })
       .sort({ submittedAt: -1 });
     res.json(submissions);
@@ -70,13 +67,11 @@ router.get('/assignment/:assignmentId', protect, async (req, res) => {
     if (!course) return res.status(404).json({ message: 'Course not found' });
     if (req.userRole === 'student') {
       const submission = await Submission.findOne({ assignment: req.params.assignmentId, student: req.user._id })
-        .select(listSelect)
         .populate({ path: 'assignment', populate: { path: 'course', select: 'code title' } });
       return res.json(submission || null);
     }
     if (req.userRole === 'lecturer' && course.lecturer.toString() === req.user._id.toString()) {
       const submissions = await Submission.find({ assignment: req.params.assignmentId })
-        .select(listSelect)
         .populate('student', 'firstName lastName email studentId')
         .sort({ submittedAt: -1 });
       return res.json(submissions);
@@ -91,7 +86,6 @@ router.get('/pending', protect, authorize('lecturer'), async (req, res) => {
   try {
     const courseIds = await require('../models/Course').find({ lecturer: req.user._id }).distinct('_id');
     const submissions = await Submission.find({ course: { $in: courseIds }, status: { $in: ['submitted', 'late'] } })
-      .select(listSelect)
       .populate('student', 'firstName lastName email studentId')
       .populate({ path: 'assignment', select: 'title totalMarks dueDate', populate: { path: 'course', select: 'code title' } })
       .sort({ submittedAt: -1 });
@@ -106,7 +100,6 @@ router.get('/course/:courseId', protect, authorize('lecturer'), async (req, res)
     const course = await Course.findOne({ _id: req.params.courseId, lecturer: req.user._id });
     if (!course) return res.status(404).json({ message: 'Course not found' });
     const submissions = await Submission.find({ course: req.params.courseId })
-      .select(listSelect)
       .populate('student', 'firstName lastName email studentId')
       .populate('assignment', 'title')
       .sort({ submittedAt: -1 });
