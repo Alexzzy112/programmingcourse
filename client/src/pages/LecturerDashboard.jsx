@@ -15,26 +15,6 @@ export default function LecturerDashboard() {
   const [gradeSuccess, setGradeSuccess] = useState('');
   const [gradingId, setGradingId] = useState(null);
 
-  const [downloadError, setDownloadError] = useState('');
-
-  const downloadFile = async (fileUrl) => {
-    try {
-      setDownloadError('');
-      if (!fileUrl) { setDownloadError('No file uploaded for this submission'); return; }
-      const response = await api.get(`/submissions/download/${fileUrl}`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileUrl);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Download failed', err);
-    }
-  };
-
   const [assignments, setAssignments] = useState([]);
   const [submissionsCount, setSubmissionsCount] = useState({});
 
@@ -243,7 +223,6 @@ export default function LecturerDashboard() {
           <p className="text-gray-500 text-sm">No pending submissions</p>
         ) : (
           <>
-            {downloadError && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{downloadError}</div>}
             {gradeError && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{gradeError}</div>}
             {gradeSuccess && <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-4">{gradeSuccess}</div>}
             <div className="overflow-x-auto">
@@ -273,8 +252,10 @@ export default function LecturerDashboard() {
                         <td className="py-3 pr-3 text-xs">{s.assignment?.course?.code || s.course?.code || '-'}</td>
                         <td className="py-3 pr-3 text-xs">{new Date(s.submittedAt).toLocaleDateString()}</td>
                         <td className="py-3 pr-3">
-                          <button onClick={() => downloadFile(s.fileUrl)} className="text-primary-600 underline text-xs">{s.fileUrl ? 'View File' : 'No file'}</button>
-                          {s.textContent && <><span className="mx-1 text-gray-300">|</span><span className="text-xs text-gray-600 line-clamp-2" title={s.textContent}>{s.textContent.substring(0, 60)}{s.textContent.length > 60 ? '...' : ''}</span></>}
+                          {s.fileUrl && <a href={`/api/submissions/download/${s.fileUrl}`} className="text-primary-600 underline text-xs" target="_blank">View File</a>}
+                          {s.fileUrl && s.textContent && <span className="mx-1 text-gray-300">|</span>}
+                          {s.textContent && <span className="text-xs text-gray-600 line-clamp-2" title={s.textContent}>{s.textContent.substring(0, 60)}{s.textContent.length > 60 ? '...' : ''}</span>}
+                          {!s.fileUrl && !s.textContent && <span className="text-xs text-gray-400">-</span>}
                         </td>
                         <td className="py-3 pr-3">
                           <input

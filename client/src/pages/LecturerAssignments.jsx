@@ -10,7 +10,6 @@ export default function LecturerAssignments() {
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [downloadError, setDownloadError] = useState('');
   const [form, setForm] = useState({ title: '', description: '', courseId: '', dueDate: '', totalMarks: 100, instructions: '' });
 
   const fetchData = async () => {
@@ -53,23 +52,8 @@ export default function LecturerAssignments() {
     }
   };
 
-  const downloadFile = async (filename) => {
-    try {
-      setDownloadError('');
-      if (!filename) { setDownloadError('No file uploaded for this submission'); return; }
-      const response = await api.get(`/submissions/download/${filename}`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Download failed', err);
-      setDownloadError(err.response?.data?.message || 'Failed to download file');
-    }
+  const downloadFile = (filename) => {
+    window.open(`/api/submissions/download/${filename}`, '_blank');
   };
 
   const handleDeleteAssignment = async (assignmentId, e) => {
@@ -192,7 +176,6 @@ export default function LecturerAssignments() {
           <h2 className="text-lg font-semibold mb-4">
             {selectedAssignment ? `Submissions: ${selectedAssignment.title}` : 'Select an assignment'}
           </h2>
-          {downloadError && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{downloadError}</div>}
           {!selectedAssignment ? (
             <p className="text-gray-500 text-sm">Click on an assignment to view submissions</p>
           ) : submissions.length === 0 ? (
@@ -211,8 +194,8 @@ export default function LecturerAssignments() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs text-gray-400">📄 {s.originalName || 'No file'}</span>
-                    {s.fileSize != null && <span className="text-xs text-gray-400">({(s.fileSize / 1024 / 1024).toFixed(2)} MB)</span>}
+                    <span className="text-xs text-gray-400">📄 {s.originalName}</span>
+                    <span className="text-xs text-gray-400">({(s.fileSize / 1024 / 1024).toFixed(2)} MB)</span>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => downloadFile(s.fileUrl)} className="text-xs btn-secondary">Download</button>

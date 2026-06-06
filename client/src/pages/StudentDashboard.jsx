@@ -65,12 +65,18 @@ export default function StudentDashboard() {
     setSubmitError('');
   };
 
+  const handleTextChange = (assignmentId, text) => {
+    setSubmitState(prev => ({ ...prev, [assignmentId]: { ...prev[assignmentId], text } }));
+    setSubmitError('');
+  };
+
   const handleSubmit = async (assignmentId) => {
     const state = submitState[assignmentId] || {};
     const file = state.file;
+    const text = state.text || '';
 
-    if (!file) {
-      setSubmitError('Please upload a file');
+    if (!file && !text.trim()) {
+      setSubmitError('Please upload a file or enter text content');
       return;
     }
 
@@ -79,8 +85,9 @@ export default function StudentDashboard() {
     setSubmitSuccess('');
 
     const formData = new FormData();
-    formData.append('file', file);
+    if (file) formData.append('file', file);
     formData.append('assignmentId', assignmentId);
+    formData.append('textContent', text);
 
     try {
       await api.post('/submissions/submit', formData, {
@@ -249,9 +256,16 @@ export default function StudentDashboard() {
                       <button type="button" onClick={() => handleFileChange(a._id, null)} className="text-red-500 text-xs">Remove</button>
                     </div>
                   )}
+                  <textarea
+                    value={state.text || ''}
+                    onChange={(e) => handleTextChange(a._id, e.target.value)}
+                    placeholder="Or type your answer here..."
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-lg p-2 text-sm outline-none resize-y focus:ring-2 focus:ring-primary-500 mb-2"
+                  />
                   <button
                     onClick={() => handleSubmit(a._id)}
-                    disabled={submitting === a._id || !state.file}
+                    disabled={submitting === a._id || (!state.file && !(state.text || '').trim())}
                     className="w-full bg-primary-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     {submitting === a._id ? 'Submitting...' : 'Submit'}
