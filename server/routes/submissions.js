@@ -35,10 +35,11 @@ router.post('/submit', protect, authorize('student'), (req, res, next) => {
       status: isLate ? 'late' : 'submitted'
     };
     if (req.file) {
-      submissionData.fileUrl = req.file.filename;
+      submissionData.fileUrl = req.file.originalname;
       submissionData.originalName = req.file.originalname;
       submissionData.fileType = req.file.mimetype;
       submissionData.fileSize = req.file.size;
+      submissionData.fileData = req.file.buffer;
     }
     const submission = await Submission.create(submissionData);
     res.status(201).json(submission);
@@ -116,13 +117,6 @@ router.delete('/:id', protect, authorize('lecturer'), async (req, res) => {
     if (!course || course.lecturer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
-    if (submission.fileUrl) {
-      const path = require('path');
-      const fs = require('fs');
-      const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../uploads');
-      const filePath = path.join(uploadDir, submission.fileUrl);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
     await Submission.findByIdAndDelete(req.params.id);
     res.json({ message: 'Submission deleted successfully' });
   } catch (error) {
@@ -130,13 +124,17 @@ router.delete('/:id', protect, authorize('lecturer'), async (req, res) => {
   }
 });
 
-router.get('/download/:filename', protect, (req, res) => {
-  const path = require('path');
-  const fs = require('fs');
-  const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../uploads');
-  const filePath = path.join(uploadDir, req.params.filename);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File not found' });
-  res.download(filePath);
+router.get('/download/:submissionId', protect, async (req, res) => {
+  try {
+    const submission = await Submission.findById(req.params.submissionId);
+    if (!submission) return res.status(404).json({ message: 'Submission not found' });
+    if (!submission.fileData) return res.status(404).json({ message: 'File not found' });
+    res.set('Content-Type', submission.fileType || 'application/octet-stream');
+    res.set('Content-Disposition', `attachment; filename="${submission.originalName || 'file'}"`);
+    res.send(submission.fileData);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 module.exports = router;
