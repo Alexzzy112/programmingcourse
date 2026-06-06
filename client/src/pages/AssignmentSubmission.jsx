@@ -8,6 +8,7 @@ export default function AssignmentSubmission() {
   const navigate = useNavigate();
   const [assignment, setAssignment] = useState(null);
   const [file, setFile] = useState(null);
+  const [textContent, setTextContent] = useState('');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
@@ -22,18 +23,19 @@ export default function AssignmentSubmission() {
       .catch(() => navigate('/student/assignments'));
   }, [id, navigate]);
 
-  const canSubmit = file && !uploading;
+  const canSubmit = (file || textContent.trim()) && !uploading;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return setError('Please upload a file');
+    if (!file && !textContent.trim()) return setError('Please upload a file or enter text content');
     setError('');
     setUploading(true);
     setProgress(0);
 
     const formData = new FormData();
-    formData.append('file', file);
+    if (file) formData.append('file', file);
     formData.append('assignmentId', id);
+    formData.append('textContent', textContent);
 
     try {
       await api.post('/submissions/submit', formData, {
@@ -89,11 +91,12 @@ export default function AssignmentSubmission() {
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{error}</div>}
           {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-4">{success}</div>}
           <form onSubmit={handleSubmit}>
-            <label className="block border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-8 text-center hover:border-primary-400 transition cursor-pointer">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-8 text-center hover:border-primary-400 transition cursor-pointer" onClick={() => document.getElementById('fileInput').click()}>
               <div className="text-3xl sm:text-4xl mb-3">📁</div>
-              <p className="text-sm text-gray-500 mb-1">Tap to browse files</p>
+              <p className="text-sm text-gray-500 mb-1">Drag and drop your file here or click to browse</p>
               <p className="text-xs text-gray-400">PDF, DOCX, TXT (Max 1MB)</p>
               <input
+                id="fileInput"
                 type="file"
                 className="hidden"
                 accept=".pdf,.doc,.docx,.txt"
@@ -102,7 +105,7 @@ export default function AssignmentSubmission() {
                   setError('');
                 }}
               />
-            </label>
+            </div>
             {file && (
               <div className="mt-3 p-3 bg-primary-50 rounded-lg flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -113,6 +116,17 @@ export default function AssignmentSubmission() {
                 <button type="button" onClick={() => setFile(null)} className="text-red-500 text-sm">Remove</button>
               </div>
             )}
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Or type your answer below</label>
+              <textarea
+                value={textContent}
+                onChange={(e) => { setTextContent(e.target.value); setError(''); }}
+                placeholder="Type your answer here..."
+                rows={6}
+                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-y"
+              />
+            </div>
 
             {uploading && (
               <div className="mt-4">

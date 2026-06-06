@@ -1,4 +1,4 @@
-const CACHE_NAME = 'course-app-v2';
+const CACHE_NAME = 'course-app-v1';
 
 const PRECACHE_URLS = [
   '/',
@@ -28,12 +28,6 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-
-  if (url.pathname.startsWith('/api/')) {
-    return;
-  }
-
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => caches.match('/'))
