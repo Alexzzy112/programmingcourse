@@ -15,9 +15,9 @@ router.post('/submit', protect, authorize('student'), (req, res, next) => {
   });
 }, async (req, res) => {
   try {
-    const { assignmentId, textContent } = req.body;
-    if (!req.file && !textContent?.trim()) {
-      return res.status(400).json({ message: 'Please upload a file or enter text content' });
+    const { assignmentId } = req.body;
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please upload a file' });
     }
     const assignment = await Assignment.findById(assignmentId);
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
@@ -31,7 +31,7 @@ router.post('/submit', protect, authorize('student'), (req, res, next) => {
       assignment: assignmentId,
       student: req.user._id,
       course: assignment.course,
-      textContent: textContent?.trim() || '',
+      textContent: '',
       status: isLate ? 'late' : 'submitted'
     };
     if (req.file) {
@@ -109,7 +109,11 @@ router.get('/course/:courseId', protect, authorize('lecturer'), async (req, res)
 });
 
 router.get('/download/:filename', protect, (req, res) => {
-  const filePath = require('path').join(__dirname, '../uploads', req.params.filename);
+  const path = require('path');
+  const fs = require('fs');
+  const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../uploads');
+  const filePath = path.join(uploadDir, req.params.filename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File not found' });
   res.download(filePath);
 });
 
