@@ -51,6 +51,22 @@ export default function LecturerDashboard() {
     fetchData();
   }, []);
 
+  const downloadFile = async (filename) => {
+    try {
+      const response = await api.get(`/submissions/download/${filename}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename || 'file');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed', err);
+    }
+  };
+
   const handleGradeSubmit = async (submissionId, totalMarks) => {
     const input = gradeInputs[submissionId] || {};
     const marksObtained = parseFloat(input.marks);
@@ -252,7 +268,7 @@ export default function LecturerDashboard() {
                         <td className="py-3 pr-3 text-xs">{s.assignment?.course?.code || s.course?.code || '-'}</td>
                         <td className="py-3 pr-3 text-xs">{new Date(s.submittedAt).toLocaleDateString()}</td>
                         <td className="py-3 pr-3">
-                          {s.fileUrl && <a href={`/api/submissions/download/${s.fileUrl}`} className="text-primary-600 underline text-xs" target="_blank">View File</a>}
+                          {s.fileUrl && <button onClick={() => downloadFile(s.fileUrl)} className="text-primary-600 underline text-xs">View File</button>}
                           {s.fileUrl && s.textContent && <span className="mx-1 text-gray-300">|</span>}
                           {s.textContent && <span className="text-xs text-gray-600 line-clamp-2" title={s.textContent}>{s.textContent.substring(0, 60)}{s.textContent.length > 60 ? '...' : ''}</span>}
                           {!s.fileUrl && !s.textContent && <span className="text-xs text-gray-400">-</span>}

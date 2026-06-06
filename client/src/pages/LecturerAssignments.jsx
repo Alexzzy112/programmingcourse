@@ -52,8 +52,20 @@ export default function LecturerAssignments() {
     }
   };
 
-  const downloadFile = (filename) => {
-    window.open(`/api/submissions/download/${filename}`, '_blank');
+  const downloadFile = async (filename) => {
+    try {
+      const response = await api.get(`/submissions/download/${filename}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename || 'file');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed', err);
+    }
   };
 
   const handleDeleteAssignment = async (assignmentId, e) => {
