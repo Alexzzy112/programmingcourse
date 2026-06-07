@@ -1,22 +1,5 @@
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
-
-const getUploadDir = () => {
-  return process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../uploads');
-};
-
-fs.mkdirSync(getUploadDir(), { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, getUploadDir());
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
 
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /pdf|docx?|txt/;
@@ -30,7 +13,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 1 * 1024 * 1024 },
   fileFilter
 });

@@ -8,6 +8,8 @@ const submissionSchema = new mongoose.Schema({
   originalName: { type: String },
   fileType: { type: String },
   fileSize: { type: Number },
+  fileData: { type: Buffer },
+  fileMimeType: { type: String },
   textContent: { type: String, default: '' },
   submittedAt: { type: Date, default: Date.now },
   status: { type: String, enum: ['submitted', 'late', 'graded'], default: 'submitted' },
