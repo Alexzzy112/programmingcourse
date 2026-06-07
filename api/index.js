@@ -17,36 +17,27 @@ if (!mongoURI) {
   console.error('MONGODB_URI environment variable is not set');
 }
 
-let connPromise = null;
+let cached = global._mongooseCache;
+if (!cached) {
+  cached = global._mongooseCache = { promise: null };
+}
 
 async function ensureConnected() {
-  const maxAttempts = 3;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    if (mongoose.connection.readyState === 1) {
-      return;
-    }
-    connPromise = null;
+  if (mongoose.connection.readyState === 1) return;
 
-    try {
-      connPromise = mongoose.connect(mongoURI, {
-        serverSelectionTimeoutMS: 20000,
-        connectTimeoutMS: 20000
-      });
-      await connPromise;
-      connPromise = null;
-      return;
-    } catch (e) {
-      connPromise = null;
-      if (attempt === maxAttempts - 1) throw e;
-      await new Promise(r => setTimeout(r, 1500));
-    }
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(mongoURI, {
+      serverSelectionTimeoutMS: 15000,
+      connectTimeoutMS: 15000,
+      bufferCommands: false
+    });
   }
-  throw new Error('Failed to establish database connection');
+  await cached.promise;
 }
 
 app.use('/api', (req, res, next) => {
   ensureConnected().then(() => next()).catch(e => {
-    connPromise = null;
+    cached.promise = null;
     res.status(503).json({ message: 'Database unavailable', error: e.message });
   });
 });
