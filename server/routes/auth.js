@@ -57,16 +57,27 @@ router.post('/lecturer/register', async (req, res) => {
 
 router.post('/lecturer/login', async (req, res) => {
   try {
+    res.set('X-Debug', 'route-reached');
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
-    const lecturer = await Lecturer.findOne({ email });
-    if (!lecturer) return res.status(401).json({ message: 'Invalid email or password' });
-    const isMatch = await lecturer.matchPassword(password);
-    if (!isMatch) return res.status(401).json({ message: 'Invalid email or password' });
-    const token = generateToken(lecturer._id, 'lecturer');
-    res.json({ token, user: { id: lecturer._id, firstName: lecturer.firstName, lastName: lecturer.lastName, email: lecturer.email, staffId: lecturer.staffId, role: 'lecturer' } });
+    res.set('X-Debug-2', 'params-ok');
+    try {
+      const lecturer = await Lecturer.findOne({ email });
+      res.set('X-Debug-3', 'query-done');
+      if (!lecturer) return res.status(401).json({ message: 'Invalid email or password' });
+      const isMatch = await lecturer.matchPassword(password);
+      res.set('X-Debug-4', 'match-done');
+      if (!isMatch) return res.status(401).json({ message: 'Invalid email or password' });
+      const token = generateToken(lecturer._id, 'lecturer');
+      res.set('X-Debug-5', 'token-generated');
+      res.json({ token, user: { id: lecturer._id, firstName: lecturer.firstName, lastName: lecturer.lastName, email: lecturer.email, staffId: lecturer.staffId, role: 'lecturer' } });
+    } catch (dbErr) {
+      res.set('X-Debug-ERROR', dbErr.message);
+      res.status(500).json({ message: 'DB Error: ' + dbErr.message, stack: dbErr.stack?.split('\n').slice(0,3).join(' | ') });
+    }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.set('X-Debug-CATASTROPHIC', error.message);
+    res.status(500).json({ message: 'Catastrophic: ' + error.message });
   }
 });
 
