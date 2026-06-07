@@ -6,10 +6,6 @@ const path = require('path');
 
 dotenv.config({ path: path.join(__dirname, '../server/.env') });
 
-mongoose.set('bufferCommands', false);
-mongoose.set('bufferTimeoutMS', 60000);
-mongoose.set('heartbeatFrequencyMS', 10000);
-
 const app = express();
 
 app.use(cors());
@@ -26,34 +22,11 @@ if (!cached) {
   cached = global._mongooseCache = { promise: null };
 }
 
-mongoose.connection.on('error', err => {
-  console.error('Mongoose connection error:', err.message);
-  cached.promise = null;
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.error('Mongoose disconnected');
-  cached.promise = null;
-});
-
 async function ensureConnected() {
-  if (mongoose.connection.readyState === 1) {
-    try {
-      await mongoose.connection.db.admin().ping({ maxTimeMS: 5000 });
-      return;
-    } catch (e) {
-      console.error('MongoDB ping failed, reconnecting...');
-      cached.promise = null;
-      await mongoose.connection.close().catch(() => {});
-    }
-  }
+  if (mongoose.connection.readyState === 1) return;
 
   if (!cached.promise) {
     cached.promise = mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 15000,
-      connectTimeoutMS: 15000,
-      socketTimeoutMS: 30000,
-      heartbeatFrequencyMS: 10000,
       bufferCommands: false
     });
   }
