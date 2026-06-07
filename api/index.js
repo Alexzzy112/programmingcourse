@@ -69,7 +69,8 @@ app.get('/api/debug/check-db', async (req, res) => {
     res.json({
       uri: mongoURI ? (mongoURI.substring(0, 25) + '...') : 'NOT SET',
       dbState: states[state] || state,
-      connectionOpts: JSON.stringify(mongoose.connection.options),
+      connectionConfig: JSON.stringify(mongoose.connection.config),
+      shouldBuffer: mongoose.connection._shouldBufferCommands ? mongoose.connection._shouldBufferCommands() : 'N/A',
       pingResult,
       dbInfo
     });
