@@ -8,3 +8,5 @@ server/uploads/*
 .vite/
 
 .vercel
+
+.env.vercel

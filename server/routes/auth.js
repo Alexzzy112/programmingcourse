@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const Student = require('../models/Student');
 const Lecturer = require('../models/Lecturer');
 const { protect } = require('../middleware/auth');
@@ -57,11 +58,16 @@ router.post('/lecturer/register', async (req, res) => {
 
 router.post('/lecturer/login', async (req, res) => {
   try {
-    res.set('X-Debug', 'route-reached');
+    res.set('X-Debug-1', 'route-reached');
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
     res.set('X-Debug-2', 'params-ok');
     try {
+      // Test basic mongoose connection
+      res.set('X-Debug-2a', 'mongoose-state:' + mongoose.connection.readyState);
+      const collections = await mongoose.connection.db.listCollections().toArray();
+      res.set('X-Debug-2b', 'collections:' + collections.map(c => c.name).join(','));
+      
       const lecturer = await Lecturer.findOne({ email });
       res.set('X-Debug-3', 'query-done');
       if (!lecturer) return res.status(401).json({ message: 'Invalid email or password' });
@@ -72,11 +78,11 @@ router.post('/lecturer/login', async (req, res) => {
       res.set('X-Debug-5', 'token-generated');
       res.json({ token, user: { id: lecturer._id, firstName: lecturer.firstName, lastName: lecturer.lastName, email: lecturer.email, staffId: lecturer.staffId, role: 'lecturer' } });
     } catch (dbErr) {
-      res.set('X-Debug-ERROR', dbErr.message);
-      res.status(500).json({ message: 'DB Error: ' + dbErr.message, stack: dbErr.stack?.split('\n').slice(0,3).join(' | ') });
+      res.set('X-Debug-ERROR', (dbErr.message || 'no message').substring(0,200));
+      res.status(500).json({ message: 'DB Error: ' + dbErr.message });
     }
   } catch (error) {
-    res.set('X-Debug-CATASTROPHIC', error.message);
+    res.set('X-Debug-CATASTROPHIC', (error.message || 'no message').substring(0,200));
     res.status(500).json({ message: 'Catastrophic: ' + error.message });
   }
 });
