@@ -6,6 +6,8 @@ const path = require('path');
 
 dotenv.config({ path: path.join(__dirname, '../server/.env') });
 
+mongoose.set('bufferCommands', false);
+
 const app = express();
 
 app.use(cors());
@@ -23,13 +25,20 @@ if (!cached) {
 }
 
 async function ensureConnected() {
-  if (mongoose.connection.readyState === 1) return;
+  if (mongoose.connection.readyState === 1) {
+    try {
+      await mongoose.connection.db.admin().ping();
+      return;
+    } catch (e) {
+      console.error('MongoDB ping failed, reconnecting...');
+      cached.promise = null;
+    }
+  }
 
   if (!cached.promise) {
     cached.promise = mongoose.connect(mongoURI, {
       serverSelectionTimeoutMS: 15000,
-      connectTimeoutMS: 15000,
-      bufferCommands: false
+      connectTimeoutMS: 15000
     });
   }
   await cached.promise;
