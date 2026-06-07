@@ -4,6 +4,10 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const path = require('path');
 
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION:', err);
+});
+
 dotenv.config({ path: path.join(__dirname, '../server/.env') });
 
 const app = express();
@@ -54,12 +58,18 @@ app.use('/api', async (req, res, next) => {
   }
 });
 
-const authRouter = require('../server/routes/auth');
-const coursesRouter = require('../server/routes/courses');
-const assignmentsRouter = require('../server/routes/assignments');
-const submissionsRouter = require('../server/routes/submissions');
-const gradesRouter = require('../server/routes/grades');
-const notificationsRouter = require('../server/routes/notifications');
+let authRouter, coursesRouter, assignmentsRouter, submissionsRouter, gradesRouter, notificationsRouter;
+try {
+  authRouter = require('../server/routes/auth');
+  coursesRouter = require('../server/routes/courses');
+  assignmentsRouter = require('../server/routes/assignments');
+  submissionsRouter = require('../server/routes/submissions');
+  gradesRouter = require('../server/routes/grades');
+  notificationsRouter = require('../server/routes/notifications');
+} catch (e) {
+  console.error('Failed to load route modules:', e);
+  throw e;
+}
 
 app.use('/api/auth', authRouter);
 app.use('/api/courses', coursesRouter);
@@ -72,8 +82,21 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', dbState: mongoose.connection.readyState === 1 ? 'connected' : 'connecting' });
 });
 
+app.post('/api/debug', express.json(), (req, res) => {
+  try {
+    res.json({ body: req.body, jwt: process.env.JWT_SECRET ? 'exists' : 'missing', mongo: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/debug', (req, res) => {
+  res.json({ message: 'debug get works', jwt: process.env.JWT_SECRET ? 'exists' : 'missing' });
+});
+
 app.use((err, req, res, next) => {
-  res.status(503).json({ message: 'Database unavailable', error: err.message });
+  console.error('Unhandled error:', err);
+  res.status(503).json({ message: 'Database unavailable', error: err.message, stack: err.stack });
 });
 
 module.exports = app;
