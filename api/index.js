@@ -22,8 +22,20 @@ if (!cached) {
   cached = global._mongooseCache = { promise: null };
 }
 
+function disableBuffering() {
+  mongoose.connection.config.bufferCommands = false;
+  for (const key in mongoose.connection.collections) {
+    const c = mongoose.connection.collections[key];
+    c.buffer = false;
+    if (c.opts) c.opts.bufferCommands = false;
+  }
+}
+
 async function ensureConnected() {
-  if (mongoose.connection.readyState === 1) return;
+  if (mongoose.connection.readyState === 1) {
+    disableBuffering();
+    return;
+  }
 
   if (!cached.promise) {
     cached.promise = mongoose.connect(mongoURI, {
@@ -33,6 +45,8 @@ async function ensureConnected() {
     });
   }
   await cached.promise;
+
+  disableBuffering();
 }
 
 app.use('/api', (req, res, next) => {
@@ -40,53 +54,6 @@ app.use('/api', (req, res, next) => {
     cached.promise = null;
     res.status(503).json({ message: 'Database unavailable', error: e.message });
   });
-});
-
-app.get('/api/debug/check-db', async (req, res) => {
-  try {
-    const state = mongoose.connection.readyState;
-    const states = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
-
-    let pingResult = 'not attempted';
-    let dbInfo = {};
-
-    if (state === 1) {
-      try {
-        const db = mongoose.connection.db;
-        pingResult = await db.admin().ping();
-      } catch (e) {
-        pingResult = 'PING FAILED: ' + e.message;
-      }
-
-      try {
-        const collections = await mongoose.connection.db.listCollections().toArray();
-        dbInfo.collections = collections.map(c => c.name);
-      } catch (e) {
-        dbInfo.collectionsError = e.message;
-      }
-    }
-
-    res.json({
-      uri: mongoURI ? (mongoURI.substring(0, 25) + '...') : 'NOT SET',
-      dbState: states[state] || state,
-      connectionConfig: JSON.stringify(mongoose.connection.config),
-      shouldBuffer: mongoose.connection._shouldBufferCommands ? mongoose.connection._shouldBufferCommands() : 'N/A',
-      pingResult,
-      dbInfo
-    });
-  } catch (e) {
-    res.json({ error: e.message });
-  }
-});
-
-app.get('/api/debug/test-query', async (req, res) => {
-  try {
-    const Student = require('../server/models/Student');
-    const count = await Student.countDocuments();
-    res.json({ count, message: 'Student count query succeeded' });
-  } catch (e) {
-    res.json({ error: e.message, stack: e.stack ? e.stack.split('\n').slice(0,5).join('\n') : 'no stack' });
-  }
 });
 
 const authRouter = require('../server/routes/auth');
@@ -109,7 +76,7 @@ app.get('/api/health', (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack ? err.stack.split('\n').slice(0,3).join('\n') : 'no stack' });
+  res.status(500).json({ message: 'Server error', error: err.message });
 });
 
 module.exports = app;
