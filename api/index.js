@@ -6,6 +6,9 @@ const path = require('path');
 
 dotenv.config({ path: path.join(__dirname, '../server/.env') });
 
+// Disable buffering globally and on the default connection immediately
+mongoose.set('bufferCommands', false);
+
 const app = express();
 
 app.use(cors());
@@ -22,35 +25,45 @@ if (!cached) {
   cached = global._mongooseCache = { promise: null };
 }
 
-function disableBuffering() {
-  mongoose.connection.config.bufferCommands = false;
-  for (const key in mongoose.connection.collections) {
-    const c = mongoose.connection.collections[key];
-    c.buffer = false;
-    if (c.opts) c.opts.bufferCommands = false;
-  }
-}
-
 async function ensureConnected() {
   if (mongoose.connection.readyState === 1) {
-    disableBuffering();
-    return;
+    // Verify connection is alive with a quick operation
+    try {
+      await mongoose.connection.db.admin().ping({ maxTimeMS: 5000 });
+    } catch (e) {
+      console.error('Ping failed, reconnecting');
+      cached.promise = null;
+      await mongoose.connection.close().catch(() => {});
+    }
   }
 
   if (!cached.promise) {
     cached.promise = mongoose.connect(mongoURI, {
-      bufferCommands: false,
       serverSelectionTimeoutMS: 30000,
-      connectTimeoutMS: 30000
+      connectTimeoutMS: 30000,
+      bufferCommands: false
+    });
+    // After connect, ensure all models have buffer=false
+    cached.promise = cached.promise.then(() => {
+      mongoose.connection.config.bufferCommands = false;
+      return mongoose.connection;
     });
   }
   await cached.promise;
-
-  disableBuffering();
 }
 
 app.use('/api', (req, res, next) => {
-  ensureConnected().then(() => next()).catch(e => {
+  ensureConnected().then(() => {
+    // Force buffer=false on every request for every collection
+    mongoose.connection.config.bufferCommands = false;
+    for (const key in mongoose.connection.collections) {
+      const c = mongoose.connection.collections[key];
+      if (c) {
+        c.buffer = false;
+      }
+    }
+    next();
+  }).catch(e => {
     cached.promise = null;
     res.status(503).json({ message: 'Database unavailable', error: e.message });
   });
