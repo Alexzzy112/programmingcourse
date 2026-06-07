@@ -145,4 +145,24 @@ router.get('/download/:filename', protect, async (req, res) => {
   }
 });
 
+router.delete('/:submissionId', protect, authorize('lecturer'), async (req, res) => {
+  try {
+    const submission = await Submission.findById(req.params.submissionId).populate('course');
+    if (!submission) return res.status(404).json({ message: 'Submission not found' });
+
+    const course = submission.course;
+    if (!course || course.lecturer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to delete this submission' });
+    }
+
+    const Grade = require('../models/Grade');
+    await Grade.deleteMany({ submission: req.params.submissionId });
+    await Submission.findByIdAndDelete(req.params.submissionId);
+
+    res.json({ message: 'Submission deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

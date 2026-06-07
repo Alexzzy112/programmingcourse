@@ -77,6 +77,16 @@ export default function LecturerDashboard() {
     }
   };
 
+  const handleDeleteSubmission = async (submissionId) => {
+    if (!window.confirm('Delete this submission? This action cannot be undone.')) return;
+    try {
+      await api.delete(`/submissions/${submissionId}`);
+      setPendingSubmissions(prev => prev.filter(s => s._id !== submissionId));
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+  };
+
   const handleGradeSubmit = async (submissionId, totalMarks) => {
     const input = gradeInputs[submissionId] || {};
     const marksObtained = parseFloat(input.marks);
@@ -303,7 +313,7 @@ export default function LecturerDashboard() {
                             className="w-28 border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-primary-500"
                           />
                         </td>
-                        <td className="py-3">
+                        <td className="py-3 flex items-center gap-1">
                           <button
                             onClick={() => handleGradeSubmit(s._id, s.assignment?.totalMarks || 100)}
                             disabled={gradingId === s._id}
@@ -311,6 +321,7 @@ export default function LecturerDashboard() {
                           >
                             {gradingId === s._id ? '...' : 'Grade'}
                           </button>
+                          <button onClick={() => handleDeleteSubmission(s._id)} className="text-xs bg-red-50 text-red-600 px-2 py-1.5 rounded hover:bg-red-100 transition">Delete</button>
                         </td>
                       </tr>
                     );

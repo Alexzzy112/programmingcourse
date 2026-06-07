@@ -102,6 +102,18 @@ export default function LecturerAssignments() {
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
+  const handleDeleteSubmission = async (submissionId) => {
+    if (!window.confirm('Delete this submission? This action cannot be undone.')) return;
+    try {
+      await api.delete(`/submissions/${submissionId}`);
+      setMessage({ type: 'success', text: 'Submission deleted' });
+      setSubmissions(prev => prev.filter(s => s._id !== submissionId));
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to delete submission' });
+    }
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  };
+
   if (loading) return <Layout><div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div></div></Layout>;
 
   return (
@@ -215,12 +227,13 @@ export default function LecturerAssignments() {
                     <span className="text-xs text-gray-400">📄 {s.originalName}</span>
                     <span className="text-xs text-gray-400">({(s.fileSize / 1024 / 1024).toFixed(2)} MB)</span>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => downloadFile(s.fileUrl)} className="text-xs btn-secondary">Download</button>
-                    {s.status !== 'graded' && (
-                      <button onClick={() => handleGrade(s._id)} className="text-xs btn-primary">Grade</button>
-                    )}
-                  </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => downloadFile(s.fileUrl)} className="text-xs btn-secondary">Download</button>
+                      {s.status !== 'graded' && (
+                        <button onClick={() => handleGrade(s._id)} className="text-xs btn-primary">Grade</button>
+                      )}
+                      <button onClick={() => handleDeleteSubmission(s._id)} className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition">Delete</button>
+                    </div>
                   {s.status === 'graded' && (
                     <p className="text-xs text-green-600 mt-1">✓ Graded</p>
                   )}
