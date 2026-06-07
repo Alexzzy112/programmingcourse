@@ -1,6 +1,5 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
 const Student = require('../models/Student');
 const Lecturer = require('../models/Lecturer');
 const { protect } = require('../middleware/auth');
@@ -60,15 +59,6 @@ router.post('/lecturer/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
-
-    if (mongoose.connection.readyState !== 1) {
-      try {
-        await mongoose.connect(process.env.MONGODB_URI);
-      } catch (e) {
-        return res.status(503).json({ message: 'DB connection failed: ' + e.message });
-      }
-    }
-    
     const lecturer = await Lecturer.findOne({ email });
     if (!lecturer) return res.status(401).json({ message: 'Invalid email or password' });
     const isMatch = await lecturer.matchPassword(password);
