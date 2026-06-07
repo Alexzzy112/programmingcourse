@@ -10,22 +10,53 @@ router.get('/', protect, async (req, res) => {
   try {
     const { courseId } = req.query;
     let query = {};
-    if (courseId) query.course = courseId;
     if (req.userRole === 'lecturer') {
-      const courses = await Course.find({ lecturer: req.user._id }).distinct('_id');
-      query.course = courseId || { $in: courses };
+      const myCourses = await Course.find({ lecturer: req.user._id }).distinct('_id');
+      if (courseId) {
+        if (!myCourses.some(id => id.toString() === courseId)) {
+          return res.status(403).json({ message: 'Not authorized to access this course' });
+        }
+        query.course = courseId;
+      } else {
+        query.course = { $in: myCourses };
+      }
+    } else if (courseId) {
+      query.course = courseId;
     }
     if (req.userRole === 'student') {
       const registeredCourseIds = await CourseRegistration.find({
         student: req.user._id,
         status: 'active'
       }).distinct('course');
+      if (courseId && !registeredCourseIds.some(id => id.toString() === courseId)) {
+        return res.status(403).json({ message: 'Not registered for this course' });
+      }
       query.course = courseId || { $in: registeredCourseIds };
     }
     const assignments = await Assignment.find(query)
       .populate('course', 'code title')
       .sort({ dueDate: -1 });
     res.json(assignments);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/:id', protect, async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id).populate('course', 'code title');
+    if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
+    if (req.userRole === 'lecturer') {
+      const course = await Course.findById(assignment.course);
+      if (!course || course.lecturer.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+    }
+    if (req.userRole === 'student') {
+      const registered = await CourseRegistration.findOne({ student: req.user._id, course: assignment.course, status: 'active' });
+      if (!registered) return res.status(403).json({ message: 'Not registered for this course' });
+    }
+    res.json(assignment);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

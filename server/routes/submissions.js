@@ -83,7 +83,7 @@ router.get('/assignment/:assignmentId', protect, async (req, res) => {
 
 router.get('/pending', protect, authorize('lecturer'), async (req, res) => {
   try {
-    const courseIds = await require('../models/Course').find({ lecturer: req.user._id }).distinct('_id');
+    const courseIds = await Course.find({ lecturer: req.user._id }).distinct('_id');
     const submissions = await Submission.find({ course: { $in: courseIds }, status: { $in: ['submitted', 'late'] } })
       .populate('student', 'firstName lastName email studentId')
       .populate({ path: 'assignment', select: 'title totalMarks dueDate', populate: { path: 'course', select: 'code title' } })
@@ -108,9 +108,32 @@ router.get('/course/:courseId', protect, authorize('lecturer'), async (req, res)
   }
 });
 
-router.get('/download/:filename', protect, (req, res) => {
-  const filePath = require('path').join(__dirname, '../uploads', req.params.filename);
-  res.download(filePath);
+router.get('/download/:filename', protect, async (req, res) => {
+  try {
+    const submission = await Submission.findOne({ fileUrl: req.params.filename }).populate('course').lean();
+    if (!submission) return res.status(404).json({ message: 'File not found' });
+
+    if (req.userRole === 'student' && submission.student.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to download this file' });
+    }
+
+    if (req.userRole === 'lecturer') {
+      const course = await Course.findById(submission.course._id || submission.course);
+      if (!course || course.lecturer.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Not authorized to download this file' });
+      }
+    }
+
+    const originalName = submission.originalName || req.params.filename;
+    const filePath = require('path').join(__dirname, '../uploads', req.params.filename);
+    const fs = require('fs');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File not found on server' });
+    }
+    res.download(filePath, originalName);
+  } catch (error) {
+    res.status(500).json({ message: 'Download failed', error: error.message });
+  }
 });
 
 module.exports = router;

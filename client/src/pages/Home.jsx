@@ -8,6 +8,7 @@ export default function Home() {
 
   useEffect(() => {
     if (user?.role === 'student') navigate('/student/dashboard');
+    if (user?.role === 'lecturer') navigate('/lecturer/dashboard');
   }, [user, navigate]);
 
   return (

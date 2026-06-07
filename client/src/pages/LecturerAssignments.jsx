@@ -54,17 +54,23 @@ export default function LecturerAssignments() {
 
   const downloadFile = async (filename) => {
     try {
-      const response = await api.get(`/submissions/download/${filename}`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const res = await api.get(`/submissions/download/${filename}`, { responseType: 'blob' });
+      const disposition = res.headers['content-disposition'];
+      let name = filename;
+      if (disposition) {
+        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match) name = match[1].replace(/['"]/g, '');
+      }
+      const url = URL.createObjectURL(res.data);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', filename || 'file');
+      link.download = name;
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Download failed', err);
+      console.error('Download failed:', err);
     }
   };
 

@@ -34,11 +34,15 @@ export default function LecturerDashboard() {
         setAssignments(assignRes.data);
 
         const counts = {};
-        for (const a of assignRes.data) {
-          try {
-            const subs = await api.get(`/submissions/assignment/${a._id}`);
-            counts[a._id] = Array.isArray(subs.data) ? subs.data.length : 0;
-          } catch { counts[a._id] = 0; }
+        const subsResults = await Promise.allSettled(
+          assignRes.data.map(a =>
+            api.get(`/submissions/assignment/${a._id}`).then(res => ({ id: a._id, data: res.data }))
+          )
+        );
+        for (const r of subsResults) {
+          if (r.status === 'fulfilled') {
+            counts[r.value.id] = Array.isArray(r.value.data) ? r.value.data.length : 0;
+          }
         }
         setSubmissionsCount(counts);
       } catch (err) {
@@ -53,17 +57,23 @@ export default function LecturerDashboard() {
 
   const downloadFile = async (filename) => {
     try {
-      const response = await api.get(`/submissions/download/${filename}`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const res = await api.get(`/submissions/download/${filename}`, { responseType: 'blob' });
+      const disposition = res.headers['content-disposition'];
+      let name = filename;
+      if (disposition) {
+        const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match) name = match[1].replace(/['"]/g, '');
+      }
+      const url = URL.createObjectURL(res.data);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', filename || 'file');
+      link.download = name;
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Download failed', err);
+      console.error('Download failed:', err);
     }
   };
 

@@ -15,11 +15,8 @@ export default function AssignmentSubmission() {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    api.get(`/assignments`)
-      .then(({ data }) => {
-        const a = data.find(d => d._id.toString() === id);
-        setAssignment(a);
-      })
+    api.get(`/assignments/${id}`)
+      .then(({ data }) => setAssignment(data))
       .catch(() => navigate('/student/assignments'));
   }, [id, navigate]);
 
