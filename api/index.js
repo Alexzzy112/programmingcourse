@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
@@ -46,18 +46,18 @@ app.get('/api/debug/check-db', async (req, res) => {
   try {
     const state = mongoose.connection.readyState;
     const states = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
-    
+
     let pingResult = 'not attempted';
     let dbInfo = {};
-    
+
     if (state === 1) {
       try {
         const db = mongoose.connection.db;
         pingResult = await db.admin().ping();
       } catch (e) {
-        pingResult = `PING FAILED: ${e.message}`;
+        pingResult = 'PING FAILED: ' + e.message;
       }
-      
+
       try {
         const collections = await mongoose.connection.db.listCollections().toArray();
         dbInfo.collections = collections.map(c => c.name);
@@ -65,15 +65,26 @@ app.get('/api/debug/check-db', async (req, res) => {
         dbInfo.collectionsError = e.message;
       }
     }
-    
+
     res.json({
       uri: mongoURI ? (mongoURI.substring(0, 25) + '...') : 'NOT SET',
       dbState: states[state] || state,
+      connectionOpts: JSON.stringify(mongoose.connection.options),
       pingResult,
       dbInfo
     });
   } catch (e) {
     res.json({ error: e.message });
+  }
+});
+
+app.get('/api/debug/test-query', async (req, res) => {
+  try {
+    const Student = require('../server/models/Student');
+    const count = await Student.countDocuments();
+    res.json({ count, message: 'Student count query succeeded' });
+  } catch (e) {
+    res.json({ error: e.message, stack: e.stack ? e.stack.split('\n').slice(0,5).join('\n') : 'no stack' });
   }
 });
 
@@ -97,7 +108,7 @@ app.get('/api/health', (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ message: 'Server error', error: err.message });
+  res.status(500).json({ message: 'Server error', error: err.message, stack: err.stack ? err.stack.split('\n').slice(0,3).join('\n') : 'no stack' });
 });
 
 module.exports = app;
