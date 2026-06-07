@@ -83,7 +83,39 @@ app.use('/api/submissions', submissionsRouter);
 app.use('/api/grades', gradesRouter);
 app.use('/api/notifications', notificationsRouter);
 
-app.get('/api/health', (req, res) => {
+app.get('/api/debug/collections', (req, res) => {
+  // Check collections before any model access
+  const before = Object.keys(mongoose.connection.collections);
+  
+  // Force models to be loaded
+  try { require('../server/models/Student'); } catch(e) {}
+  try { require('../server/models/Lecturer'); } catch(e) {}
+  
+  // Check collections after
+  const after = Object.keys(mongoose.connection.collections);
+  
+  const s = mongoose.connection.collections['students'];
+  const l = mongoose.connection.collections['lecturers'];
+  
+  // Check if connection object used by models is the same
+  const Student = require('../server/models/Student');
+  
+  res.json({
+    before_collections: before,
+    after_collections: after,
+    hasStudentsCollection: !!s,
+    hasLecturersCollection: !!l,
+    s_buf: s ? s.buffer : 'N/A',
+    s_bufCmd: s ? s._shouldBufferCommands() : 'N/A',
+    s_opts: s ? JSON.stringify(s.opts) : 'N/A',
+    l_buf: l ? l.buffer : 'N/A',
+    l_bufCmd: l ? l._shouldBufferCommands() : 'N/A',
+    l_opts: l ? JSON.stringify(l.opts) : 'N/A',
+    connection_is_connected: mongoose.connection.readyState === 1,
+    student_db_name: Student.db ? Student.db.name : 'N/A',
+    student_collection_name: Student.collection ? Student.collection.name : 'N/A'
+  });
+});
   const colls = Object.keys(mongoose.connection.collections);
   const config = JSON.stringify(mongoose.connection.config);
   const globalBuffer = mongoose.get('bufferCommands');
