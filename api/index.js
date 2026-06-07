@@ -84,7 +84,18 @@ app.use('/api/grades', gradesRouter);
 app.use('/api/notifications', notificationsRouter);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', dbState: mongoose.connection.readyState === 1 ? 'connected' : 'connecting' });
+  const colls = Object.keys(mongoose.connection.collections);
+  const config = JSON.stringify(mongoose.connection.config);
+  const globalBuffer = mongoose.get('bufferCommands');
+  res.json({
+    status: 'OK',
+    dbState: mongoose.connection.readyState === 1 ? 'connected' : 'connecting',
+    config,
+    globalBuffer,
+    collectionNames: colls,
+    hasStudents: 'students' in mongoose.connection.collections,
+    hasLecturers: 'lecturers' in mongoose.connection.collections
+  });
 });
 
 app.use((err, req, res, next) => {
