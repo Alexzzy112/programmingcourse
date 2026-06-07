@@ -1,9 +1,16 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+
+const getUploadDir = () => {
+  return process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../uploads');
+};
+
+fs.mkdirSync(getUploadDir(), { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads'));
+    cb(null, getUploadDir());
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);

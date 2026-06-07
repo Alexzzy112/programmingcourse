@@ -1,10 +1,14 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const Submission = require('../models/Submission');
 const Assignment = require('../models/Assignment');
 const Course = require('../models/Course');
 const CourseRegistration = require('../models/CourseRegistration');
 const upload = require('../middleware/upload');
 const { protect, authorize } = require('../middleware/auth');
+
+const getUploadDir = () => process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../uploads');
 
 const router = express.Router();
 
@@ -125,8 +129,7 @@ router.get('/download/:filename', protect, async (req, res) => {
     }
 
     const originalName = submission.originalName || req.params.filename;
-    const filePath = require('path').join(__dirname, '../uploads', req.params.filename);
-    const fs = require('fs');
+    const filePath = path.join(getUploadDir(), req.params.filename);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'File not found on server' });
     }
