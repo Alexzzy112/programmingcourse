@@ -20,18 +20,24 @@ router.get('/', protect, async (req, res) => {
       } else {
         query.course = { $in: myCourses };
       }
-    } else if (courseId) {
-      query.course = courseId;
     }
     if (req.userRole === 'student') {
       const registeredCourseIds = await CourseRegistration.find({
         student: req.user._id,
         status: 'active'
       }).distinct('course');
-      if (courseId && !registeredCourseIds.some(id => id.toString() === courseId)) {
-        return res.status(403).json({ message: 'Not registered for this course' });
+      if (registeredCourseIds.length === 0) {
+        return res.json([]);
       }
-      query.course = courseId || { $in: registeredCourseIds };
+      if (courseId) {
+        if (!registeredCourseIds.some(id => id.toString() === courseId)) {
+          return res.status(403).json({ message: 'Not registered for this course' });
+        }
+        query.course = courseId;
+      } else {
+        query.course = { $in: registeredCourseIds };
+      }
+      query.isActive = true;
     }
     const assignments = await Assignment.find(query)
       .populate('course', 'code title')
@@ -64,6 +70,18 @@ router.get('/:id', protect, async (req, res) => {
 
 router.get('/course/:courseId', protect, async (req, res) => {
   try {
+    if (req.userRole === 'student') {
+      const registered = await CourseRegistration.findOne({
+        student: req.user._id,
+        course: req.params.courseId,
+        status: 'active'
+      });
+      if (!registered) return res.status(403).json({ message: 'Not registered for this course' });
+    }
+    if (req.userRole === 'lecturer') {
+      const course = await Course.findOne({ _id: req.params.courseId, lecturer: req.user._id });
+      if (!course) return res.status(403).json({ message: 'Not authorized to access this course' });
+    }
     const assignments = await Assignment.find({ course: req.params.courseId, isActive: true })
       .populate('course', 'code title')
       .sort({ dueDate: -1 });
