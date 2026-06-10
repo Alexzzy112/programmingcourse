@@ -28,20 +28,30 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // API calls: always network, never cache
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  // Navigations: network-first with cache fallback
+  if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match('/'))
+      fetch(request).catch(() => caches.match('/'))
     );
     return;
   }
 
+  // Static assets: cache-first
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((response) => {
+    caches.match(request).then((cached) => {
+      return cached || fetch(request).then((response) => {
         if (response.status === 200 && response.type === 'basic') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
+            cache.put(request, clone);
           });
         }
         return response;

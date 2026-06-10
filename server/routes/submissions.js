@@ -16,9 +16,9 @@ router.post('/submit', protect, authorize('student'), (req, res, next) => {
   });
 }, async (req, res) => {
   try {
-    const { assignmentId, textContent } = req.body;
-    if (!req.file && !textContent?.trim()) {
-      return res.status(400).json({ message: 'Please upload a file or enter text content' });
+    const { assignmentId } = req.body;
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please upload a file' });
     }
     const assignment = await Assignment.findById(assignmentId);
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
@@ -28,23 +28,21 @@ router.post('/submit', protect, authorize('student'), (req, res, next) => {
     const existing = await Submission.findOne({ assignment: assignmentId, student: req.user._id });
     if (existing) return res.status(400).json({ message: 'You have already submitted this assignment' });
     const isLate = new Date() > new Date(assignment.dueDate);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(req.file.originalname);
     const submissionData = {
       assignment: assignmentId,
       student: req.user._id,
       course: assignment.course,
-      textContent: textContent?.trim() || '',
+      fileUrl: uniqueSuffix + ext,
+      originalName: req.file.originalname,
+      fileType: req.file.mimetype,
+      fileSize: req.file.size,
+      fileData: req.file.buffer,
+      fileMimeType: req.file.mimetype,
+      textContent: '',
       status: isLate ? 'late' : 'submitted'
     };
-    if (req.file) {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const ext = path.extname(req.file.originalname);
-      submissionData.fileUrl = uniqueSuffix + ext;
-      submissionData.originalName = req.file.originalname;
-      submissionData.fileType = req.file.mimetype;
-      submissionData.fileSize = req.file.size;
-      submissionData.fileData = req.file.buffer;
-      submissionData.fileMimeType = req.file.mimetype;
-    }
     const submission = await Submission.create(submissionData);
     const { fileData, ...safeSubmission } = submission.toObject();
     res.status(201).json(safeSubmission);

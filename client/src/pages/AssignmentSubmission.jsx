@@ -8,7 +8,6 @@ export default function AssignmentSubmission() {
   const navigate = useNavigate();
   const [assignment, setAssignment] = useState(null);
   const [file, setFile] = useState(null);
-  const [textContent, setTextContent] = useState('');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
@@ -20,19 +19,18 @@ export default function AssignmentSubmission() {
       .catch(() => navigate('/student/assignments'));
   }, [id, navigate]);
 
-  const canSubmit = (file || textContent.trim()) && !uploading;
+  const canSubmit = !!file && !uploading;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file && !textContent.trim()) return setError('Please upload a file or enter text content');
+    if (!file) return setError('Please upload a file');
     setError('');
     setUploading(true);
     setProgress(0);
 
     const formData = new FormData();
-    if (file) formData.append('file', file);
+    formData.append('file', file);
     formData.append('assignmentId', id);
-    formData.append('textContent', textContent);
 
     try {
       await api.post('/submissions/submit', formData, {
@@ -113,17 +111,6 @@ export default function AssignmentSubmission() {
                 <button type="button" onClick={() => { setFile(null); document.getElementById('fileInput').value = ''; }} className="text-red-500 text-sm">Remove</button>
               </div>
             )}
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Or type your answer below</label>
-              <textarea
-                value={textContent}
-                onChange={(e) => { setTextContent(e.target.value); setError(''); }}
-                placeholder="Type your answer here..."
-                rows={6}
-                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-y"
-              />
-            </div>
 
             {uploading && (
               <div className="mt-4">

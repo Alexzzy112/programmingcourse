@@ -69,18 +69,12 @@ export default function StudentDashboard() {
     }
   };
 
-  const handleTextChange = (assignmentId, text) => {
-    setSubmitState(prev => ({ ...prev, [assignmentId]: { ...prev[assignmentId], text } }));
-    setSubmitError('');
-  };
-
   const handleSubmit = async (assignmentId) => {
     const state = submitState[assignmentId] || {};
     const file = state.file;
-    const text = state.text || '';
 
-    if (!file && !text.trim()) {
-      setSubmitError('Please upload a file or enter text content');
+    if (!file) {
+      setSubmitError('Please upload a file');
       return;
     }
 
@@ -89,9 +83,8 @@ export default function StudentDashboard() {
     setSubmitSuccess('');
 
     const formData = new FormData();
-    if (file) formData.append('file', file);
+    formData.append('file', file);
     formData.append('assignmentId', assignmentId);
-    formData.append('textContent', text);
 
     try {
       await api.post('/submissions/submit', formData, {
@@ -254,26 +247,19 @@ export default function StudentDashboard() {
                       )}
                     </div>
                   <label htmlFor={`file-${a._id}`} className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-primary-400 transition cursor-pointer mb-2 block">
-                    <p className="text-xs text-gray-500 mb-1">Tap to upload PDF/DOCX/TXT or type answer below</p>
+                    <p className="text-xs text-gray-500 mb-1">Tap to upload PDF/DOCX/TXT</p>
                     <p className="text-xs text-gray-400">Max 1MB</p>
                     <input id={`file-${a._id}`} type="file" className="hidden" accept=".pdf,.doc,.docx,.txt" onChange={(e) => handleFileChange(a._id, e.target.files[0])} />
                   </label>
                   {state.file && (
-                    <div className="mb-2 p-2 bg-primary-50 rounded-lg flex items-center justify-between">
+                    <div className="mb-3 p-2 bg-primary-50 rounded-lg flex items-center justify-between">
                       <span className="text-xs font-medium">{state.file.name}</span>
                       <button type="button" onClick={() => handleFileChange(a._id, null)} className="text-red-500 text-xs">Remove</button>
                     </div>
                   )}
-                  <textarea
-                    value={state.text || ''}
-                    onChange={(e) => handleTextChange(a._id, e.target.value)}
-                    placeholder="Or type your answer here..."
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-lg p-2 text-sm outline-none resize-y focus:ring-2 focus:ring-primary-500 mb-2"
-                  />
                   <button
                     onClick={() => handleSubmit(a._id)}
-                    disabled={submitting === a._id || (!state.file && !(state.text || '').trim())}
+                    disabled={submitting === a._id || !state.file}
                     className="w-full bg-primary-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                   >
                     {submitting === a._id ? 'Submitting...' : 'Submit'}
