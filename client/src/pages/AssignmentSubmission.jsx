@@ -88,9 +88,9 @@ export default function AssignmentSubmission() {
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{error}</div>}
           {success && <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-4">{success}</div>}
           <form onSubmit={handleSubmit}>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-8 text-center hover:border-primary-400 transition cursor-pointer" onClick={() => document.getElementById('fileInput').click()}>
+            <label htmlFor="fileInput" className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-8 text-center hover:border-primary-400 transition cursor-pointer block">
               <div className="text-3xl sm:text-4xl mb-3">📁</div>
-              <p className="text-sm text-gray-500 mb-1">Drag and drop your file here or click to browse</p>
+              <p className="text-sm text-gray-500 mb-1">Tap to browse or drag and drop your file here</p>
               <p className="text-xs text-gray-400">PDF, DOCX, TXT (Max 1MB)</p>
               <input
                 id="fileInput"
@@ -102,7 +102,7 @@ export default function AssignmentSubmission() {
                   setError('');
                 }}
               />
-            </div>
+            </label>
             {file && (
               <div className="mt-3 p-3 bg-primary-50 rounded-lg flex items-center justify-between">
                 <div className="flex items-center gap-2">

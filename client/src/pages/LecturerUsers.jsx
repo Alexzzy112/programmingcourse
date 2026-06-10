@@ -163,15 +163,17 @@ export default function LecturerUsers() {
                           {accountSus ? 'Suspended' : 'Active'}
                         </span>
                       </td>
-                      <td className="py-3 flex gap-1 flex-wrap">
-                        <button onClick={() => openView(s)} className="bg-blue-500 text-white text-xs px-3 py-1.5 rounded hover:bg-blue-600 transition">View</button>
-                        <button onClick={() => openEdit(s)} className="bg-indigo-500 text-white text-xs px-3 py-1.5 rounded hover:bg-indigo-600 transition">Edit</button>
-                        {accountSus ? (
-                          <button onClick={() => handleAction(s._id, null, 'approve')} className="bg-green-700 text-white text-xs px-3 py-1.5 rounded hover:bg-green-800 transition">Un-suspend Acct</button>
-                        ) : (
-                          <button onClick={() => handleAction(s._id, null, 'suspend')} className="bg-orange-600 text-white text-xs px-3 py-1.5 rounded hover:bg-orange-700 transition">Suspend Acct</button>
-                        )}
-                        <button onClick={() => setDeleteConfirm({ studentId: s._id })} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded hover:bg-red-700 transition">Delete</button>
+                      <td className="py-3">
+                        <div className="flex gap-1 flex-wrap">
+                          <button onClick={() => openView(s)} className="bg-blue-500 text-white text-xs px-3 py-2 rounded hover:bg-blue-600 transition min-h-[36px]">View</button>
+                          <button onClick={() => openEdit(s)} className="bg-indigo-500 text-white text-xs px-3 py-2 rounded hover:bg-indigo-600 transition min-h-[36px]">Edit</button>
+                          {accountSus ? (
+                            <button onClick={() => handleAction(s._id, null, 'approve')} className="bg-green-700 text-white text-xs px-3 py-2 rounded hover:bg-green-800 transition min-h-[36px]">Un-suspend Acct</button>
+                          ) : (
+                            <button onClick={() => handleAction(s._id, null, 'suspend')} className="bg-orange-600 text-white text-xs px-3 py-2 rounded hover:bg-orange-700 transition min-h-[36px]">Suspend Acct</button>
+                          )}
+                          <button onClick={() => setDeleteConfirm({ studentId: s._id })} className="bg-red-600 text-white text-xs px-3 py-2 rounded hover:bg-red-700 transition min-h-[36px]">Delete</button>
+                        </div>
                       </td>
                     </tr>
                   );

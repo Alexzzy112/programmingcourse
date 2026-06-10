@@ -44,9 +44,11 @@ export default function LecturerNotifications() {
     try {
       await api.delete(`/notifications/${id}`);
       setNotifications(prev => prev.filter(n => n._id !== id));
+      setFormMsg({ type: 'success', text: 'Notification deleted' });
     } catch (err) {
-      alert(err.response?.data?.message || 'Delete failed');
+      setFormMsg({ type: 'error', text: err.response?.data?.message || 'Delete failed' });
     }
+    setTimeout(() => setFormMsg({ type: '', text: '' }), 3000);
   };
 
   if (loading) return <Layout><div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div></div></Layout>;

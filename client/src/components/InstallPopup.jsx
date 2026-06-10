@@ -3,19 +3,16 @@ import { useState, useEffect } from 'react';
 export default function InstallPopup() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [show, setShow] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-      setIsStandalone(true);
       return;
     }
 
     const ua = window.navigator.userAgent;
     const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
     const ios = /iPad|iPhone|iPod/.test(ua);
-    setIsIOS(ios && isSafari);
+    const isIOS = ios && isSafari;
 
     const handler = (e) => {
       e.preventDefault();
@@ -25,16 +22,20 @@ export default function InstallPopup() {
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    if (ios && isSafari && !window.navigator.standalone) {
+    if (isIOS) {
       setShow(true);
     }
 
-    window.addEventListener('appinstalled', () => {
+    const onInstalled = () => {
       setShow(false);
       setDeferredPrompt(null);
-    });
+    };
+    window.addEventListener('appinstalled', onInstalled);
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
   }, []);
 
   const handleInstall = async () => {
@@ -47,7 +48,8 @@ export default function InstallPopup() {
     setDeferredPrompt(null);
   };
 
-  if (isStandalone || !show) return null;
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return null;
+  if (!show) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-6">
@@ -61,12 +63,12 @@ export default function InstallPopup() {
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-gray-900">Install Course App</h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              {isIOS
+              {/iPad|iPhone|iPod/.test(window.navigator.userAgent) && /Safari/.test(window.navigator.userAgent) && !/Chrome/.test(window.navigator.userAgent)
                 ? 'Tap the Share button and select "Add to Home Screen"'
                 : 'Install the app for a better experience'}
             </p>
           </div>
-          <button onClick={() => setShow(false)} className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600">
+          <button onClick={() => setShow(false)} className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -75,22 +77,22 @@ export default function InstallPopup() {
         <div className="mt-3 flex gap-2">
           <button
             onClick={() => setShow(false)}
-            className="flex-1 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors min-h-[44px]"
           >
             Later
           </button>
-          {!isIOS && (
+          {deferredPrompt && (
             <button
               onClick={handleInstall}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
             >
               Install
             </button>
           )}
-          {isIOS && (
+          {!deferredPrompt && /iPad|iPhone|iPod/.test(window.navigator.userAgent) && /Safari/.test(window.navigator.userAgent) && !/Chrome/.test(window.navigator.userAgent) && (
             <button
               onClick={() => setShow(false)}
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
             >
               Got it
             </button>

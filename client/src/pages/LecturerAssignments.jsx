@@ -11,6 +11,10 @@ export default function LecturerAssignments() {
   const [submissions, setSubmissions] = useState([]);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [form, setForm] = useState({ title: '', description: '', courseId: '', dueDate: '', totalMarks: 100, instructions: '' });
+  const [gradingSubmission, setGradingSubmission] = useState(null);
+  const [gradeMarks, setGradeMarks] = useState('');
+  const [gradeFeedback, setGradeFeedback] = useState('');
+  const [grading, setGrading] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -88,16 +92,28 @@ export default function LecturerAssignments() {
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
-  const handleGrade = async (submissionId) => {
-    const marks = prompt('Enter marks obtained:');
-    if (!marks) return;
-    const feedback = prompt('Enter feedback (optional):');
+  const openGradeModal = (submission) => {
+    setGradingSubmission(submission);
+    setGradeMarks('');
+    setGradeFeedback('');
+  };
+
+  const handleGradeSubmit = async (e) => {
+    e.preventDefault();
+    if (!gradeMarks || isNaN(gradeMarks) || Number(gradeMarks) < 0) {
+      setMessage({ type: 'error', text: 'Please enter valid marks' });
+      return;
+    }
+    setGrading(true);
     try {
-      await api.post('/grades', { submissionId, marksObtained: Number(marks), feedback: feedback || '' });
+      await api.post('/grades', { submissionId: gradingSubmission._id, marksObtained: Number(gradeMarks), feedback: gradeFeedback || '' });
       setMessage({ type: 'success', text: 'Grade saved successfully' });
+      setGradingSubmission(null);
       loadSubmissions(selectedAssignment);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to grade' });
+    } finally {
+      setGrading(false);
     }
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
@@ -232,12 +248,12 @@ export default function LecturerAssignments() {
                   {s.textContent && (
                     <div className="mb-2 p-2 bg-gray-50 rounded text-xs text-gray-600 line-clamp-3">{s.textContent}</div>
                   )}
-                    <div className="flex gap-2">
-                      {s.fileUrl && <button onClick={() => downloadFile(s.fileUrl)} className="text-xs btn-secondary">Download</button>}
+                    <div className="flex gap-2 flex-wrap">
+                      {s.fileUrl && <button onClick={() => downloadFile(s.fileUrl)} className="text-xs btn-secondary min-h-[36px]">Download</button>}
                       {s.status !== 'graded' && (
-                        <button onClick={() => handleGrade(s._id)} className="text-xs btn-primary">Grade</button>
+                        <button onClick={() => openGradeModal(s)} className="text-xs btn-primary min-h-[36px]">Grade</button>
                       )}
-                      <button onClick={() => handleDeleteSubmission(s._id)} className="text-xs bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition">Delete</button>
+                      <button onClick={() => handleDeleteSubmission(s._id)} className="text-xs bg-red-50 text-red-600 px-3 py-2 rounded hover:bg-red-100 transition min-h-[36px]">Delete</button>
                     </div>
                   {s.status === 'graded' && (
                     <p className="text-xs text-green-600 mt-1">✓ Graded</p>
@@ -248,6 +264,51 @@ export default function LecturerAssignments() {
           )}
         </div>
       </div>
+
+      {/* Grade Modal */}
+      {gradingSubmission && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !grading && setGradingSubmission(null)}>
+          <div className="bg-white rounded-xl w-full max-w-sm p-6 relative" onClick={e => e.stopPropagation()}>
+            <button onClick={() => !grading && setGradingSubmission(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+            <h2 className="text-lg font-bold mb-1">Grade Submission</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              {gradingSubmission.student?.firstName} {gradingSubmission.student?.lastName} - {gradingSubmission.assignment?.title}
+            </p>
+            <form onSubmit={handleGradeSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Marks (out of {gradingSubmission.assignment?.totalMarks || 100})
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max={gradingSubmission.assignment?.totalMarks || 100}
+                  value={gradeMarks}
+                  onChange={e => setGradeMarks(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Feedback (optional)</label>
+                <textarea
+                  value={gradeFeedback}
+                  onChange={e => setGradeFeedback(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none resize-y focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setGradingSubmission(null)} disabled={grading} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-50 transition disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={grading} className="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm hover:bg-primary-700 transition disabled:opacity-50">
+                  {grading ? 'Saving...' : 'Submit Grade'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

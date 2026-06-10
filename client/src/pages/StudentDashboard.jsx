@@ -253,11 +253,11 @@ export default function StudentDashboard() {
                         <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Pending</span>
                       )}
                     </div>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-primary-400 transition cursor-pointer mb-2" onClick={() => document.getElementById(`file-${a._id}`).click()}>
-                    <p className="text-xs text-gray-500 mb-1">Click to upload PDF/DOCX/TXT or drag file</p>
+                  <label htmlFor={`file-${a._id}`} className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-primary-400 transition cursor-pointer mb-2 block">
+                    <p className="text-xs text-gray-500 mb-1">Tap to upload PDF/DOCX/TXT or type answer below</p>
                     <p className="text-xs text-gray-400">Max 1MB</p>
                     <input id={`file-${a._id}`} type="file" className="hidden" accept=".pdf,.doc,.docx,.txt" onChange={(e) => handleFileChange(a._id, e.target.files[0])} />
-                  </div>
+                  </label>
                   {state.file && (
                     <div className="mb-2 p-2 bg-primary-50 rounded-lg flex items-center justify-between">
                       <span className="text-xs font-medium">{state.file.name}</span>
