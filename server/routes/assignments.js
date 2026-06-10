@@ -111,10 +111,10 @@ router.put('/:id', protect, authorize('lecturer'), async (req, res) => {
     const assignment = await Assignment.findOne({ _id: req.params.id, lecturer: req.user._id });
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
     const { title, description, dueDate, totalMarks, instructions, isActive } = req.body;
-    if (title) assignment.title = title;
-    if (description) assignment.description = description;
-    if (dueDate) assignment.dueDate = dueDate;
-    if (totalMarks) assignment.totalMarks = totalMarks;
+    if (title !== undefined) assignment.title = title;
+    if (description !== undefined) assignment.description = description;
+    if (dueDate !== undefined) assignment.dueDate = dueDate;
+    if (totalMarks !== undefined) assignment.totalMarks = totalMarks;
     if (instructions !== undefined) assignment.instructions = instructions;
     if (isActive !== undefined) assignment.isActive = isActive;
     await assignment.save();
@@ -126,9 +126,16 @@ router.put('/:id', protect, authorize('lecturer'), async (req, res) => {
 
 router.delete('/:id', protect, authorize('lecturer'), async (req, res) => {
   try {
-    const assignment = await Assignment.findOneAndDelete({ _id: req.params.id, lecturer: req.user._id });
+    const assignment = await Assignment.findOne({ _id: req.params.id, lecturer: req.user._id });
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
-    res.json({ message: 'Assignment deleted successfully' });
+    const Submission = require('../models/Submission');
+    const Grade = require('../models/Grade');
+    await Promise.all([
+      Submission.deleteMany({ assignment: assignment._id }),
+      Grade.deleteMany({ assignment: assignment._id })
+    ]);
+    await Assignment.findByIdAndDelete(assignment._id);
+    res.json({ message: 'Assignment and all related submissions/grades deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

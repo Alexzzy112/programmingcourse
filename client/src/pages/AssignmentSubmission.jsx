@@ -110,7 +110,7 @@ export default function AssignmentSubmission() {
                   <span className="text-sm font-medium">{file.name}</span>
                   <span className="text-xs text-gray-400">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
                 </div>
-                <button type="button" onClick={() => setFile(null)} className="text-red-500 text-sm">Remove</button>
+                <button type="button" onClick={() => { setFile(null); document.getElementById('fileInput').value = ''; }} className="text-red-500 text-sm">Remove</button>
               </div>
             )}
 

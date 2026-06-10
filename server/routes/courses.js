@@ -115,10 +115,10 @@ router.put('/:id', protect, authorize('lecturer'), async (req, res) => {
     const course = await Course.findOne({ _id: req.params.id, lecturer: req.user._id });
     if (!course) return res.status(404).json({ message: 'Course not found' });
     const { title, description, credits, maxStudents, schedule, isActive } = req.body;
-    if (title) course.title = title;
+    if (title !== undefined) course.title = title;
     if (description !== undefined) course.description = description;
-    if (credits) course.credits = credits;
-    if (maxStudents) course.maxStudents = maxStudents;
+    if (credits !== undefined) course.credits = credits;
+    if (maxStudents !== undefined) course.maxStudents = maxStudents;
     if (schedule !== undefined) course.schedule = schedule;
     if (isActive !== undefined) course.isActive = isActive;
     await course.save();

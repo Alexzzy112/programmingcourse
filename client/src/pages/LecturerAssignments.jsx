@@ -223,12 +223,17 @@ export default function LecturerAssignments() {
                       {s.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs text-gray-400">📄 {s.originalName}</span>
-                    <span className="text-xs text-gray-400">({(s.fileSize / 1024 / 1024).toFixed(2)} MB)</span>
-                  </div>
+                  {s.fileUrl && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs text-gray-400">📄 {s.originalName}</span>
+                      <span className="text-xs text-gray-400">({(s.fileSize / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                  )}
+                  {s.textContent && (
+                    <div className="mb-2 p-2 bg-gray-50 rounded text-xs text-gray-600 line-clamp-3">{s.textContent}</div>
+                  )}
                     <div className="flex gap-2">
-                      <button onClick={() => downloadFile(s.fileUrl)} className="text-xs btn-secondary">Download</button>
+                      {s.fileUrl && <button onClick={() => downloadFile(s.fileUrl)} className="text-xs btn-secondary">Download</button>}
                       {s.status !== 'graded' && (
                         <button onClick={() => handleGrade(s._id)} className="text-xs btn-primary">Grade</button>
                       )}

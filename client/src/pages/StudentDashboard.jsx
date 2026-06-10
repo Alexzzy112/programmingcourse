@@ -41,12 +41,12 @@ export default function StudentDashboard() {
         setStats({
           courses: courses.length,
           assignments: courseAssignments.length,
-          pendingSubmissions: pending.length,
+          pendingSubmissions: pending.length + overdue.length,
           grades: grades.length
         });
 
         setSubmissions(subs);
-        setPendingAssignments(pending);
+        setPendingAssignments([...pending, ...overdue]);
         setNotifications(notifications.slice(0, 5));
 
         const sorted = [...courseAssignments].sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate)).slice(0, 5);
@@ -63,6 +63,10 @@ export default function StudentDashboard() {
   const handleFileChange = (assignmentId, file) => {
     setSubmitState(prev => ({ ...prev, [assignmentId]: { ...prev[assignmentId], file } }));
     setSubmitError('');
+    if (!file) {
+      const input = document.getElementById(`file-${assignmentId}`);
+      if (input) input.value = '';
+    }
   };
 
   const handleTextChange = (assignmentId, text) => {
@@ -238,13 +242,17 @@ export default function StudentDashboard() {
               const state = submitState[a._id] || {};
               return (
                 <div key={a._id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-medium text-sm">{a.title}</p>
-                      <p className="text-xs text-gray-500">{a.course?.code} - Due: {new Date(a.dueDate).toLocaleString()}</p>
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-medium text-sm">{a.title}</p>
+                        <p className="text-xs text-gray-500">{a.course?.code} - Due: {new Date(a.dueDate).toLocaleString()}</p>
+                      </div>
+                      {new Date(a.dueDate) <= new Date() ? (
+                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">Overdue</span>
+                      ) : (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Pending</span>
+                      )}
                     </div>
-                    <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Pending</span>
-                  </div>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center hover:border-primary-400 transition cursor-pointer mb-2" onClick={() => document.getElementById(`file-${a._id}`).click()}>
                     <p className="text-xs text-gray-500 mb-1">Click to upload PDF/DOCX/TXT or drag file</p>
                     <p className="text-xs text-gray-400">Max 1MB</p>
