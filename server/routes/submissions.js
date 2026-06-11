@@ -119,7 +119,7 @@ router.get('/course/:courseId', protect, authorize('lecturer'), async (req, res)
 
 router.get('/download/:filename', protect, async (req, res) => {
   try {
-    const submission = await Submission.findOne({ fileUrl: req.params.filename }).populate('course').lean();
+    const submission = await Submission.findOne({ fileUrl: req.params.filename }).populate('course');
     if (!submission || !submission.fileData) return res.status(404).json({ message: 'File not found' });
 
     if (req.userRole === 'student' && submission.student.toString() !== req.user._id.toString()) {
@@ -134,10 +134,11 @@ router.get('/download/:filename', protect, async (req, res) => {
     }
 
     const originalName = submission.originalName || req.params.filename;
+    const fileBuffer = Buffer.isBuffer(submission.fileData) ? submission.fileData : Buffer.from(submission.fileData);
     res.set('Content-Disposition', `attachment; filename="${originalName}"`);
     res.set('Content-Type', submission.fileMimeType || 'application/octet-stream');
-    res.set('Content-Length', submission.fileSize.toString());
-    res.send(submission.fileData);
+    res.set('Content-Length', fileBuffer.length.toString());
+    res.send(fileBuffer);
   } catch (error) {
     res.status(500).json({ message: 'Download failed', error: error.message });
   }

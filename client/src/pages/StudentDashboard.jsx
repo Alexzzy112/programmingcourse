@@ -87,9 +87,7 @@ export default function StudentDashboard() {
     formData.append('assignmentId', assignmentId);
 
     try {
-      await api.post('/submissions/submit', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await api.post('/submissions/submit', formData);
       setSubmitSuccess(`Assignment submitted successfully!`);
       setPendingAssignments(prev => prev.filter(a => a._id !== assignmentId));
       setSubmitState(prev => { const n = { ...prev }; delete n[assignmentId]; return n; });

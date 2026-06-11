@@ -34,7 +34,6 @@ export default function AssignmentSubmission() {
 
     try {
       await api.post('/submissions/submit', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => {
           if (e.total) setProgress(Math.round((e.loaded * 100) / e.total));
         }
